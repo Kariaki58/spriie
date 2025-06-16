@@ -115,7 +115,7 @@ export default function ProductScreen({ product, isActive }: any) {
     }, [isDragging, startX, scrollLeft]);
 
     return (
-        <div className="h-[90vh] rounded-2xl w-full max-w-md mx-auto bg-black relative overflow-hidden snap-start">
+        <div className="h-[100vh] w-full max-w-md mx-auto bg-black relative overflow-hidden snap-start">
             <div 
                 ref={scrollContainerRef}
                 className="relative h-full w-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
@@ -146,30 +146,30 @@ export default function ProductScreen({ product, isActive }: any) {
                         {media.type === 'video' ? (
                         <>
                             <video
-                            ref={index === 0 ? videoRef : null}
-                            src={media.url}
-                            className="h-full w-full object-cover"
-                            loop
-                            playsInline
-                            poster={product.thumbnail}
-                            onClick={togglePlayPause}
+                                ref={index === 0 ? videoRef : null}
+                                src={media.url}
+                                className="h-full w-full object-cover"
+                                loop
+                                playsInline
+                                poster={product.thumbnail}
+                                onClick={togglePlayPause}
                             />
                             {/* Play/Pause Button - Only shows on hover/touch */}
                             <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                togglePlayPause();
-                            }}
-                            className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-3 bg-black/50 rounded-full transition-opacity duration-300 ${
-                                showPlayButton ? 'opacity-100' : 'opacity-0'
-                            } group-hover:opacity-100`}
-                            aria-label={isPlaying ? "Pause video" : "Play video"}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    togglePlayPause();
+                                }}
+                                className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-3 bg-black/50 rounded-full transition-opacity duration-300 ${
+                                    showPlayButton ? 'opacity-100' : 'opacity-0'
+                                } group-hover:opacity-100`}
+                                aria-label={isPlaying ? "Pause video" : "Play video"}
                             >
-                            {isPlaying ? (
-                                <Pause size={32} color="white" fill="white" />
-                            ) : (
-                                <Play size={32} color="white" fill="white" />
-                            )}
+                                {isPlaying ? (
+                                    <Pause size={32} color="white" fill="white" />
+                                ) : (
+                                    <Play size={32} color="white" fill="white" />
+                                )}
                             </button>
                         </>
                         ) : (

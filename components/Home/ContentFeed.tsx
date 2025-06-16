@@ -94,7 +94,7 @@ export default function ContentFeed() {
     return (
         <div 
             ref={containerRef}
-            className="flex-1 relative overflow-hidden snap-y snap-mandatory mt-10 touch-none"
+            className="flex-1 relative overflow-hidden snap-y snap-mandatory touch-none"
         >
             {showHeart && (
                 <div 
