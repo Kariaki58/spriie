@@ -122,19 +122,6 @@ export default function ProductScreen({ product, isActive }: any) {
                 onMouseDown={startDrag}
                 onTouchStart={startDrag}
             >
-                <div className="absolute bottom-24 left-0 right-0 flex justify-center gap-2 z-10">
-                    {mediaItems.map((_, idx) => (
-                        <button
-                            key={idx}
-                            onClick={() => setCurrentMediaIndex(idx)}
-                            className={`h-1.5 rounded-full transition-all duration-300 ${
-                                idx === currentMediaIndex ? 'w-4 bg-white' : 'w-2 bg-gray-500 hover:bg-gray-400'
-                            }`}
-                            aria-label={`Go to slide ${idx + 1}`}
-                        />
-                    ))}
-                </div>
-
                 {mediaItems.map((media, index) => (
                     <div 
                         key={index} 
@@ -181,6 +168,20 @@ export default function ProductScreen({ product, isActive }: any) {
                         />
                         )}
                     </div>
+                ))}
+            </div>
+
+            {/* Carousel Indicators - Moved inside the scroll container but positioned absolutely */}
+            <div className="absolute bottom-24 left-0 right-0 flex justify-center gap-2 z-10">
+                {mediaItems.map((_, idx) => (
+                    <button
+                        key={idx}
+                        onClick={() => setCurrentMediaIndex(idx)}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                            idx === currentMediaIndex ? 'w-4 bg-white' : 'w-2 bg-gray-500 hover:bg-gray-400'
+                        }`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                    />
                 ))}
             </div>
 
