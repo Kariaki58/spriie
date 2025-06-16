@@ -184,7 +184,7 @@ export default function ProductScreen({ product, isActive }: any) {
                 ))}
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent z-10">
+            <div className="absolute bottom-15 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent z-10">
                 <div className="text-white">
                     <h3 className="font-bold text-lg">{product.name}</h3>
                     <p className="text-sm line-clamp-2">{product.description}</p>
