@@ -1,12 +1,15 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
 import ProductScreen from './ProductScreen';
-
+import { Heart } from 'lucide-react';
 
 export default function ContentFeed() {
     const [products, setProducts] = useState<any[]>([]);
     const [currentProductIndex, setCurrentProductIndex] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
+    const touchStartYRef = useRef(0);
+    const [showHeart, setShowHeart] = useState(false);
+    const [heartPosition, setHeartPosition] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -34,12 +37,53 @@ export default function ContentFeed() {
         }
     };
 
+    const handleTouchStart = (e: TouchEvent) => {
+        touchStartYRef.current = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+        e.preventDefault();
+        const touchY = e.touches[0].clientY;
+        const deltaY = touchY - touchStartYRef.current;
+
+        // Only trigger swipe if the movement is primarily vertical
+        if (Math.abs(deltaY) > 50) {
+            if (deltaY > 0) {
+                // Swipe down - go to previous product
+                setCurrentProductIndex(prev => Math.max(prev - 1, 0));
+            } else {
+                // Swipe up - go to next product
+                setCurrentProductIndex(prev => 
+                    Math.min(prev + 1, products.length - 1)
+                );
+            }
+            touchStartYRef.current = touchY;
+        }
+    };
+
+    const handleDoubleTap = (e: React.TouchEvent) => {
+        const touch = e.touches[0] || e.changedTouches[0];
+        setHeartPosition({
+            x: touch.clientX,
+            y: touch.clientY
+        });
+        setShowHeart(true);
+        setTimeout(() => setShowHeart(false), 1000);
+    };
+
     useEffect(() => {
         const container = containerRef.current;
         
         if (container) {
             container.addEventListener('wheel', handleScroll, { passive: false });
-            return () => container.removeEventListener('wheel', handleScroll);
+            container.addEventListener('touchstart', handleTouchStart as any, { passive: false });
+            container.addEventListener('touchmove', handleTouchMove as any, { passive: false });
+            
+            return () => {
+                container.removeEventListener('wheel', handleScroll);
+                container.removeEventListener('touchstart', handleTouchStart as any);
+                container.removeEventListener('touchmove', handleTouchMove as any);
+            };
         }
     }, [products]);
 
@@ -50,8 +94,20 @@ export default function ContentFeed() {
     return (
         <div 
             ref={containerRef}
-            className="flex-1 relative overflow-hidden snap-y snap-mandatory mt-10"
+            className="flex-1 relative overflow-hidden snap-y snap-mandatory mt-10 touch-none"
         >
+            {showHeart && (
+                <div 
+                    className="absolute z-50 text-red-500 animate-ping"
+                    style={{
+                        left: `${heartPosition.x - 24}px`,
+                        top: `${heartPosition.y - 24}px`,
+                    }}
+                >
+                    <Heart size={48} fill="red" />
+                </div>
+            )}
+
             {products.map((product, index) => (
                 <div 
                     key={product._id}
@@ -62,6 +118,7 @@ export default function ContentFeed() {
                     <ProductScreen 
                         product={product} 
                         isActive={index === currentProductIndex}
+                        onDoubleTap={handleDoubleTap}
                     />
                 </div>
             ))}
