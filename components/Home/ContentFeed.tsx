@@ -46,13 +46,10 @@ export default function ContentFeed() {
         const touchY = e.touches[0].clientY;
         const deltaY = touchY - touchStartYRef.current;
 
-        // Only trigger swipe if the movement is primarily vertical
         if (Math.abs(deltaY) > 50) {
             if (deltaY > 0) {
-                // Swipe down - go to previous product
                 setCurrentProductIndex(prev => Math.max(prev - 1, 0));
             } else {
-                // Swipe up - go to next product
                 setCurrentProductIndex(prev => 
                     Math.min(prev + 1, products.length - 1)
                 );

@@ -7,13 +7,11 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-// Define types for our select options
 type OptionType = {
   label: string;
   value: string;
 };
 
-// Define Zod schema for validation
 const videoProductSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
@@ -133,7 +131,6 @@ const DashboardContentUpload = () => {
   const removeVideoProduct = (id: number) => {
     if (videoProducts.length <= 1) return;
     
-    // Clean up object URLs
     const productToRemove = videoProducts.find(vp => vp.id === id);
     if (productToRemove) {
       if (productToRemove.videoPreview) URL.revokeObjectURL(productToRemove.videoPreview);
@@ -148,13 +145,11 @@ const DashboardContentUpload = () => {
     setVideoProducts(videoProducts.map(vp => {
       if (vp.id !== productId) return vp;
       
-      // Clean up object URL
       URL.revokeObjectURL(vp.images[imageIndex].preview);
       
       const newImages = [...vp.images];
       newImages.splice(imageIndex, 1);
       
-      // If removed image was the thumbnail, set thumbnail to first remaining image or null
       let newThumbnail = vp.thumbnail;
       let newThumbnailPreview = vp.thumbnailPreview;
       
@@ -235,7 +230,6 @@ const DashboardContentUpload = () => {
         return;
       }
   
-      // Validate all products
       for (const vp of videoProducts) {
         const result = await videoProductSchema.safeParseAsync(vp);
         if (!result.success) {
@@ -245,7 +239,6 @@ const DashboardContentUpload = () => {
         }
       }
       
-      // Prepare form data for all products
       const formDataArray = videoProducts.map(vp => {
         const formData = new FormData();
         
@@ -273,7 +266,6 @@ const DashboardContentUpload = () => {
         return formData;
       });
   
-      // Submit all products
       const responses = await Promise.all(
         formDataArray.map(formData =>
           fetch('/api/content/upload', {
@@ -282,11 +274,9 @@ const DashboardContentUpload = () => {
           })
         ));
       
-      // Check if all responses were successful
       const allSuccessful = responses.every(response => response.ok);
       
       if (allSuccessful) {
-        // Reset form to initial state on success
         setVideoProducts([{
           id: 1,
           title: '',
@@ -304,10 +294,7 @@ const DashboardContentUpload = () => {
           inventory: ''
         }]);
         
-        // Reset form validation
         // reset();
-        
-        // Show success message
         alert("Products uploaded successfully!");
       } else {
         // Handle errors if any request failed

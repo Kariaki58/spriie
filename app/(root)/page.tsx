@@ -9,10 +9,8 @@ export default function HomePage() {
       
       <ContentFeed />
       <div className="hidden lg:flex lg:w-80 xl:w-96 bg-white border-l">
-        {/* Right sidebar for comments/extra info */}
         <div className="p-4">
           <h3 className="font-semibold">Comments</h3>
-          {/* Comments will go here */}
         </div>
       </div>
     </div>

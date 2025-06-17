@@ -131,48 +131,46 @@ export default function ProductScreen({ product, isActive }: any) {
                         onTouchStart={() => media.type === 'video' && setShowPlayButton(true)}
                     >
                         {media.type === 'video' ? (
-                        <>
-                            <video
-                                ref={index === 0 ? videoRef : null}
+                            <>
+                                <video
+                                    ref={index === 0 ? videoRef : null}
+                                    src={media.url}
+                                    className="h-full w-full object-cover"
+                                    loop
+                                    playsInline
+                                    poster={product.thumbnail}
+                                    onClick={togglePlayPause}
+                                />
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        togglePlayPause();
+                                    }}
+                                    className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-3 bg-black/50 rounded-full transition-opacity duration-300 ${
+                                        showPlayButton ? 'opacity-100' : 'opacity-0'
+                                    } group-hover:opacity-100`}
+                                    aria-label={isPlaying ? "Pause video" : "Play video"}
+                                >
+                                    {isPlaying ? (
+                                        <Pause size={32} color="white" fill="white" />
+                                    ) : (
+                                        <Play size={32} color="white" fill="white" />
+                                    )}
+                                </button>
+                            </>
+                            ) : (
+                            <img
                                 src={media.url}
-                                className="h-full w-full object-cover"
-                                loop
-                                playsInline
-                                poster={product.thumbnail}
-                                onClick={togglePlayPause}
+                                alt={product.name}
+                                className="h-full w-full object-contain bg-black"
+                                loading="lazy"
                             />
-                            {/* Play/Pause Button - Only shows on hover/touch */}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    togglePlayPause();
-                                }}
-                                className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-3 bg-black/50 rounded-full transition-opacity duration-300 ${
-                                    showPlayButton ? 'opacity-100' : 'opacity-0'
-                                } group-hover:opacity-100`}
-                                aria-label={isPlaying ? "Pause video" : "Play video"}
-                            >
-                                {isPlaying ? (
-                                    <Pause size={32} color="white" fill="white" />
-                                ) : (
-                                    <Play size={32} color="white" fill="white" />
-                                )}
-                            </button>
-                        </>
-                        ) : (
-                        <img
-                            src={media.url}
-                            alt={product.name}
-                            className="h-full w-full object-contain bg-black"
-                            loading="lazy"
-                        />
                         )}
                     </div>
                 ))}
             </div>
 
-            {/* Carousel Indicators - Moved inside the scroll container but positioned absolutely */}
-            <div className="absolute bottom-24 left-0 right-0 flex justify-center gap-2 z-10">
+            <div className="absolute bottom-15 left-0 right-0 flex justify-center gap-2 z-10">
                 {mediaItems.map((_, idx) => (
                     <button
                         key={idx}
@@ -185,20 +183,23 @@ export default function ProductScreen({ product, isActive }: any) {
                 ))}
             </div>
 
-            <div className="absolute bottom-15 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent z-10">
+            <div className="absolute bottom-18 left-0 right-0 p-4 z-10 w-[80%]">
                 <div className="text-white">
-                    <h3 className="font-bold text-lg">{product.name}</h3>
-                    <p className="text-sm line-clamp-2">{product.description}</p>
-                    <div className="flex items-center mt-2">
-                        <span className="font-bold">${product.basePrice}</span>
+                    <div className="flex items-center mb-2">
+                        <span className="font-bold text-3xl">${product.basePrice}</span>
                             {product.discount > 0 && (
                         <span className="ml-2 text-sm line-through text-gray-300">
                             ${(product.basePrice / (1 - product.discount/100)).toFixed(2)}
                         </span>
                         )}
                     </div>
+                    <h3 className="font-bold text-lg truncate">{product.name}</h3>
+                    <p className="text-sm line-clamp-2">{product.description}</p>
                 </div>
             </div>
+            <button>
+                view more
+            </button>
 
             <div className="absolute right-4 bottom-24 flex flex-col items-center space-y-4 z-10">
                 <div className="flex flex-col items-center">

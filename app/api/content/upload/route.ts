@@ -20,10 +20,7 @@ export async function POST(req: NextRequest) {
                 { status: 401 }
             );
         }
-
-
-
-
+        
         const title = formData.get("title") as string;
         const description = formData.get("description") as string;
         const basePrice = formData.get("basePrice") as string;
