@@ -170,7 +170,7 @@ export default function ProductScreen({ product, isActive }: any) {
                 ))}
             </div>
 
-            <div className="absolute bottom-15 left-0 right-0 flex justify-center gap-2 z-10">
+            <div className="absolute bottom-20 left-0 right-0 flex justify-center gap-2 z-10">
                 {mediaItems.map((_, idx) => (
                     <button
                         key={idx}
@@ -183,7 +183,7 @@ export default function ProductScreen({ product, isActive }: any) {
                 ))}
             </div>
 
-            <div className="absolute bottom-18 left-0 right-0 p-4 z-10 w-[80%]">
+            <div className="absolute bottom-23 left-0 right-0 p-4 z-10 w-[80%]">
                 <div className="text-white">
                     <div className="flex items-center mb-2">
                         <span className="font-bold text-3xl">${product.basePrice}</span>
