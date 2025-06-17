@@ -2,8 +2,25 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
     Heart, MessageSquare, Bookmark, Share2, 
-    ShoppingCart, Play, Pause 
+    ShoppingCart, Play, Pause, 
+    Minus,
+    Plus
 } from 'lucide-react';
+import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { Button } from "@/components/ui/button"
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
+
+
 
 export default function ProductScreen({ product, isActive }: any) {
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -16,6 +33,13 @@ export default function ProductScreen({ product, isActive }: any) {
     const [isDragging, setIsDragging] = useState(false);
     const [startX, setStartX] = useState(0);
     const [scrollLeft, setScrollLeft] = useState(0);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [qty, setQty] = useState(1);
+
+    const { data: session } = useSession();
+
+
+    console.log(session);
     
     const mediaItems = [
         { type: 'video', url: product.video },
@@ -204,12 +228,14 @@ export default function ProductScreen({ product, isActive }: any) {
             <div className="absolute right-4 bottom-24 flex flex-col items-center space-y-4 z-10">
                 <div className="flex flex-col items-center">
                     <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
-                        <img 
-                            src={product.thumbnail} 
-                            alt="User profile" 
-                            className="w-full h-full rounded-full object-cover"
-                            loading="lazy"
-                        />
+                        <Link href="/profile">
+                            <img 
+                                src={session?.user.image} 
+                                alt="User profile" 
+                                className="w-full h-full rounded-full object-cover"
+                                loading="lazy"
+                            />
+                        </Link>
                     </div>
                     <span className="text-white text-xs mt-1">@{product.userId.slice(-4)}</span>
                 </div>
@@ -253,13 +279,68 @@ export default function ProductScreen({ product, isActive }: any) {
                 >
                     <Share2 size={24} color="white" />
                 </button>
+                <Drawer>
+                    <div>
+                        <DrawerTrigger asChild>
+                            <button
+                                className="flex flex-col items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-md p-3 rounded-2xl w-16 h-16"
+                                aria-label="Add to cart"
+                            >
+                                <ShoppingCart size={20} color="white" />
+                                <span className="text-xs font-semibold text-white">Buy</span>
+                            </button>
+                        </DrawerTrigger>
+                    </div>
+                    <DrawerContent>
+                        <div className="mx-auto w-full max-w-sm px-4 pb-6">
+                            <DrawerHeader>
+                                <DrawerTitle className="text-xl font-semibold">You're buying</DrawerTitle>
+                                <p className="text-sm text-muted-foreground">Review your selection and proceed.</p>
+                            </DrawerHeader>
 
-                <button 
-                    className="flex flex-col items-center bg-emerald-500 p-2 rounded-full"
+                            <div className="flex gap-4 items-center border p-3 rounded-lg shadow-sm bg-white my-4">
+                                <img src={product.images[0]} alt={product.name} className="w-16 h-16 object-cover rounded-md border" />
+                                <div className="flex flex-col">
+                                <p className="font-semibold text-base truncate">{product.name}</p>
+                                <p className="text-sm text-gray-500">${product.basePrice}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-center my-4">
+                                <span className="text-sm">Quantity</span>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setQty(Math.max(1, qty - 1))} className="border rounded-full w-8 h-8 flex items-center justify-center">-</button>
+                                    <span>{qty}</span>
+                                    <button onClick={() => setQty(qty + 1)} className="border rounded-full w-8 h-8 flex items-center justify-center">+</button>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-center text-lg font-bold my-4">
+                                <span>Total</span>
+                                <span>${(product.basePrice * qty).toFixed(2)}</span>
+                            </div>
+
+                            <DrawerFooter>
+                                <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-md font-medium">
+                                    Continue to Checkout
+                                </button>
+                                <DrawerClose asChild>
+                                    <button className="w-full bg-gray-200 text-gray-700 py-2 mt-2 rounded-md hover:bg-gray-300 transition">
+                                        Keep exploring
+                                    </button>
+                                </DrawerClose>
+                            </DrawerFooter>
+                        </div>
+                    </DrawerContent>
+                </Drawer>
+                {/* <button
+                    className="flex flex-col items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-md p-3 rounded-2xl w-16 h-16"
                     aria-label="Add to cart"
+                    onClick={() => setIsDrawerOpen(true)}
                 >
                     <ShoppingCart size={20} color="white" />
-                </button>
+                    <span className="text-xs font-semibold text-white">Buy</span>
+                </button> */}
             </div>
         </div>
     );
