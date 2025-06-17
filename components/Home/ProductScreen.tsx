@@ -230,7 +230,7 @@ export default function ProductScreen({ product, isActive }: any) {
                     <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
                         <Link href="/profile">
                             <img 
-                                src={session?.user.image} 
+                                src={session?.user.image ? session?.user.image : '/default.jpg'} 
                                 alt="User profile" 
                                 className="w-full h-full rounded-full object-cover"
                                 loading="lazy"
