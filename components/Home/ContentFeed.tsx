@@ -16,6 +16,8 @@ export default function ContentFeed() {
             try {
                 const res = await fetch('/api/content');
                 const data = await res.json();
+
+                console.log(data);
                 setProducts(data.message);
             } catch (error) {
                 console.error("Failed to fetch products:", error);
@@ -84,7 +86,7 @@ export default function ContentFeed() {
         }
     }, [products]);
 
-    if (products.length === 0) {
+    if (products?.length === 0) {
         return <div className="flex-1 flex items-center justify-center">Loading...</div>;
     }
 
@@ -105,7 +107,7 @@ export default function ContentFeed() {
                 </div>
             )}
 
-            {products.map((product, index) => (
+            {products?.map((product, index) => (
                 <div 
                     key={product._id}
                     className={`absolute inset-0 transition-transform duration-500 ease-in-out

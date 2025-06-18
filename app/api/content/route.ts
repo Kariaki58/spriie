@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
             message: product
         }, { status: 200 })
     } catch (error) {
+        console.log(error);
         return NextResponse.json({
             error: "Bad Request"
         }, { status: 500})
