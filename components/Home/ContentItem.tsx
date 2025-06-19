@@ -5,6 +5,7 @@ import {
     ChevronLeft, ChevronRight, ShoppingCart 
 } from 'lucide-react';
 import UserProfile from './UserProfile';
+import Image from 'next/image';
 
 export default function ContentItem({ content, onNext, onPrev }: any) {
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -61,8 +62,10 @@ export default function ContentItem({ content, onNext, onPrev }: any) {
                         onClick={togglePlay}
                     />
                 ) : (
-                    <img
+                    <Image
                         src={mediaItems[currentSlide].url}
+                        width={100}
+                        height={100}
                         alt={content.name}
                         className="h-full w-full object-contain bg-black"
                     />

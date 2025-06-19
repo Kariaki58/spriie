@@ -4,7 +4,7 @@ import mongoose, { Document } from "mongoose";
 export interface ITransaction extends Document {
     userId: mongoose.Types.ObjectId;
     storeId: mongoose.Types.ObjectId;
-    refrence: string;
+    reference: string;
     status: string[];
     message: string;
     transaction: string;
@@ -22,7 +22,7 @@ const TransactionSchema = new mongoose.Schema({
         required: true,
         ref: "Store"
     },
-    refrence: {
+    reference: {
         type: String,
         required: true,
         unique: true
@@ -30,7 +30,7 @@ const TransactionSchema = new mongoose.Schema({
     status: {
         type: String,
         required: true,
-        enum: ["pending", "processing", "completed", "failed"]
+        enum: ["pending", "paid", "failed"]
     },
     transaction: {
         type: String,

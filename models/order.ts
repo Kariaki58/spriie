@@ -10,6 +10,7 @@ export interface ICartItem {
     price: number;
 }
 
+
 export interface IOrder extends Document {
     userId: mongoose.Types.ObjectId;
     storeId: mongoose.Types.ObjectId;
@@ -57,7 +58,7 @@ const OrderSchema = new mongoose.Schema(
         paymentMethod: {
             type: String,
             required: true,
-            enum: ["credit_card", "paypal", "bank_transfer", "cash_on_delivery"],
+            enum: ["credit_card", "paypal", "bank_transfer", "cash_on_delivery", "paystack"],
         },
     },
     {

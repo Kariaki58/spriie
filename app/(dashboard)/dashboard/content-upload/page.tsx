@@ -1,11 +1,13 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Plus, X, Tag, Film, Image, ChevronDown, Info, DollarSign, Trash2 } from 'lucide-react';
+import { Upload, Plus, X, ChevronDown, Info, DollarSign, Trash2 } from 'lucide-react';
 import CreatableSelect from 'react-select/creatable';
 import { ActionMeta, MultiValue } from 'react-select';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import Image from 'next/image';
+import ImageIcon from './image-icon';
 
 type OptionType = {
   label: string;
@@ -619,8 +621,10 @@ const DashboardContentUpload = () => {
                       <div className="grid grid-cols-3 gap-2">
                         {vp.images.map((img, idx) => (
                           <div key={idx} className="relative group">
-                            <img
+                            <Image
                               src={img.preview}
+                              width={400}
+                              height={400}
                               alt={`Product image ${idx + 1}`}
                               className="aspect-square object-cover rounded-md border border-gray-200 dark:border-gray-700"
                             />
@@ -631,7 +635,7 @@ const DashboardContentUpload = () => {
                                 className={`p-1 rounded-full mr-1 ${vp.thumbnail === img.file ? 'bg-emerald-500 text-white' : 'bg-white text-gray-800'}`}
                                 title="Set as thumbnail"
                               >
-                                <Image className="h-3 w-3" />
+                                <ImageIcon />
                               </button>
                               <button
                                 type="button"
@@ -685,8 +689,10 @@ const DashboardContentUpload = () => {
                     Selected Thumbnail Preview
                   </label>
                   <div className="mt-1">
-                    <img
+                    <Image
                       src={vp.thumbnailPreview}
+                      width={100}
+                      height={100}
                       alt="Selected thumbnail"
                       className="max-h-60 rounded-md border border-gray-200 dark:border-gray-700"
                     />
