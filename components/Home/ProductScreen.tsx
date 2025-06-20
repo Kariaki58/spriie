@@ -147,6 +147,11 @@ export default function ProductScreen({ product, isActive }: any) {
         };
     }, [isDragging, startX, scrollLeft]);
 
+    function formatNumberWithCommas(number: number) {
+        return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+
     const toggleDescription = () => {
         setShowFullDescription(!showFullDescription);
     };
@@ -224,11 +229,12 @@ export default function ProductScreen({ product, isActive }: any) {
             <div className="absolute bottom-23 left-0 right-0 p-4 z-10 w-[80%]">
                 <div className="text-white">
                     <div className="flex items-center mb-2">
-                        <span className="font-bold text-3xl">${product.basePrice}</span>
-                            {product.discount > 0 && (
+                        <span className="font-bold text-3xl">₦{formatNumberWithCommas(product.basePrice)}</span>
+                        {product.discount > 0 && (
                         <span className="ml-2 text-sm line-through text-gray-300">
-                            ${(product.basePrice / (1 - product.discount/100)).toFixed(2)}
+                            ₦{formatNumberWithCommas(Number((product.basePrice / (1 - product.discount / 100)).toFixed(0)))}
                         </span>
+
                         )}
                     </div>
                     <h3 className="font-bold text-lg truncate">{product.name}</h3>

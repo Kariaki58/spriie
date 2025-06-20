@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import ProductScreen from './ProductScreen';
 import { Heart } from 'lucide-react';
 
-
 export interface Product {
     _id: string;
     name: string;
@@ -26,18 +25,28 @@ export default function ContentFeed({ products }: ContentFeedProps) {
     const touchStartYRef = useRef(0);
     const [showHeart, setShowHeart] = useState(false);
     const [heartPosition, setHeartPosition] = useState({ x: 0, y: 0 });
+    const isAnimatingRef = useRef(false);
 
+    const changeProductIndex = (newIndex: number) => {
+        if (isAnimatingRef.current || newIndex < 0 || newIndex >= products.length) return;
+        
+        isAnimatingRef.current = true;
+        setCurrentProductIndex(newIndex);
+        
+        // Allow animation to complete before accepting new changes
+        setTimeout(() => {
+            isAnimatingRef.current = false;
+        }, 500);
+    };
 
     const handleScroll = (e: WheelEvent) => {
         e.preventDefault();
-        if (!products.length) return;
+        if (!products.length || isAnimatingRef.current) return;
 
         if (e.deltaY > 0) {
-            setCurrentProductIndex(prev => 
-                Math.min(prev + 1, products.length - 1)
-            );
+            changeProductIndex(currentProductIndex + 1);
         } else {
-            setCurrentProductIndex(prev => Math.max(prev - 1, 0))
+            changeProductIndex(currentProductIndex - 1);
         }
     };
 
@@ -47,16 +56,16 @@ export default function ContentFeed({ products }: ContentFeedProps) {
 
     const handleTouchMove = (e: TouchEvent) => {
         e.preventDefault();
+        if (isAnimatingRef.current) return;
+        
         const touchY = e.touches[0].clientY;
         const deltaY = touchY - touchStartYRef.current;
 
-        if (Math.abs(deltaY) > 50) {
+        if (Math.abs(deltaY) > 100) { // Increased threshold to prevent accidental scrolls
             if (deltaY > 0) {
-                setCurrentProductIndex(prev => Math.max(prev - 1, 0));
+                changeProductIndex(currentProductIndex - 1);
             } else {
-                setCurrentProductIndex(prev => 
-                    Math.min(prev + 1, products.length - 1)
-                );
+                changeProductIndex(currentProductIndex + 1);
             }
             touchStartYRef.current = touchY;
         }
@@ -86,8 +95,7 @@ export default function ContentFeed({ products }: ContentFeedProps) {
                 container.removeEventListener('touchmove', handleTouchMove as any);
             };
         }
-    }, [products]);
-
+    }, [products, currentProductIndex]);
 
     return (
         <div 

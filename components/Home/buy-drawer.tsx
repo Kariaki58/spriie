@@ -61,6 +61,11 @@ interface PaystackPop {
 }
 
 export default function BuyDrawer({ product, showFullDescription, toggleDescription, setQty, qty }: BuyDrawerProps) {
+
+    function formatNumberWithCommas(number: number | string) {
+        return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
     const [isCheckout, setIsCheckout] = useState<boolean>(false);
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
     const [isMounted, setIsMounted] = useState<boolean>(false);
@@ -201,10 +206,10 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                             <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-gray-900 dark:text-white truncate">{product.name}</p>
                                 <div className="flex items-center mt-1">
-                                    <span className="text-lg font-bold text-emerald-600">${product.basePrice}</span>
+                                    <span className="text-lg font-bold text-emerald-600">₦{formatNumberWithCommas(product.basePrice)}</span>
                                     {product.discount > 0 && (
                                         <span className="ml-2 text-sm line-through text-gray-500 dark:text-gray-400">
-                                            ${(product.basePrice / (1 - product.discount/100)).toFixed(2)}
+                                            ₦{formatNumberWithCommas((product.basePrice / (1 - product.discount/100)).toFixed(2))}
                                         </span>
                                     )}
                                 </div>
@@ -258,7 +263,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
                             <div className="flex justify-between items-center text-lg font-bold">
                                 <span className="text-gray-700 dark:text-gray-300">Total</span>
-                                <span className="text-emerald-600">${(product.basePrice * qty).toFixed(2)}</span>
+                                <span className="text-emerald-600">₦{formatNumberWithCommas((product.basePrice * qty).toFixed(2))}</span>
                             </div>
                         </div>
 
@@ -426,7 +431,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
                             <div className="flex justify-between items-center text-lg font-bold">
                                 <span className="text-gray-700 dark:text-gray-300">Total</span>
-                                <span className="text-emerald-600">${(product.basePrice * qty).toFixed(2)}</span>
+                                <span className="text-emerald-600">₦{formatNumberWithCommas((product.basePrice * qty).toFixed(2))}</span>
                             </div>
                         </div>
 
