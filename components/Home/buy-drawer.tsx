@@ -191,9 +191,9 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                         </DrawerHeader>
 
                         <div className="flex gap-4 items-center border border-gray-200 dark:border-gray-700 p-4 rounded-xl bg-white dark:bg-gray-800 my-4 shadow-sm">
-                            <Image
-                                width={80}
-                                height={80}
+                            <img
+                                // width={80}
+                                // height={80}
                                 src={product.thumbnail}
                                 alt={product.name}
                                 className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"

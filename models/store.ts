@@ -165,24 +165,9 @@ const StoreSchema = new mongoose.Schema({
         instagram: {
             type: String
         },
-        pinterest: {
-            type: String
-        },
-        youtube: {
-            type: String
-        },
-        linkedin: {
-            type: String
-        },
         googleMaps: {
             type: String
         },
-        whatsapp: {
-            type: String
-        },
-        tiktok: {
-            type: String
-        }
     },
     faq: {
         type: [

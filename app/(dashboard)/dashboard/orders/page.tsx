@@ -48,7 +48,6 @@ const OrdersManagement = () => {
     const [statusUpdate, setStatusUpdate] = useState<OrderStatus | ''>('');
 
     useEffect(() => {
-        // Load dummy data
         const dummyOrders: Order[] = [
             {
                 id: '1',

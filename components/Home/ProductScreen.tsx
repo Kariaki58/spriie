@@ -11,7 +11,7 @@ import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import BuyDrawer from './buy-drawer';
 
-interface Product {
+export interface Product {
     _id: string;
     name: string;
     description: string;
@@ -197,9 +197,7 @@ export default function ProductScreen({ product, isActive }: any) {
                                 </button>
                             </>
                             ) : (
-                            <Image
-                                width={100}
-                                height={100}
+                            <img
                                 src={media.url}
                                 alt={product.name}
                                 className="h-full w-full object-contain bg-black"
@@ -266,11 +264,11 @@ export default function ProductScreen({ product, isActive }: any) {
                     <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
                         <Link href="/profile">
 
-                            <Image 
+                            <img 
                                 src={!session?.user?.image ? '/default.jpg': session?.user.image} 
                                 alt="User profile"
-                                width={100}
-                                height={100}
+                                // width={100}
+                                // height={100}
                                 className="w-full h-full rounded-full object-cover"
                                 loading="lazy"
                             />

@@ -3,11 +3,12 @@ import { UploadFile } from "@/lib/cloudinary/cloud-fun";
 import connectToDatabase from "@/lib/mongoose";
 import Product from "@/models/product";
 import Category from "@/models/category";
-import Tags from "@/models/tags";
+import Tag from "@/models/tags";
 import User from "@/models/user";
+import Store from "@/models/store";
 import { options } from "../../auth/options";
 import { getServerSession } from "next-auth";
-
+import { Types } from "mongoose";
 
 export async function POST(req: NextRequest) {
     try {
@@ -20,21 +21,53 @@ export async function POST(req: NextRequest) {
                 { status: 401 }
             );
         }
+
+        // Validate required fields
+        const requiredFields = ['title', 'description', 'basePrice', 'discountedPrice', 'inventory'];
+        const missingFields = requiredFields.filter(field => !formData.has(field));
         
+        if (missingFields.length > 0) {
+            return NextResponse.json(
+                { error: `Missing required fields: ${missingFields.join(', ')}` },
+                { status: 400 }
+            );
+        }
+
+        // Extract and validate basic fields
         const title = formData.get("title") as string;
         const description = formData.get("description") as string;
-        const basePrice = formData.get("basePrice") as string;
-        const discountedPrice = formData.get("discountedPrice") as string;
-        const showPrice = formData.get("showPrice") as string;
+        const basePrice = parseFloat(formData.get("basePrice") as string);
+        const discountedPrice = parseFloat(formData.get("discountedPrice") as string);
+        const showPrice = formData.get("showPrice") === "true";
         const sku = formData.get("sku") as string | null;
-        const inventory = formData.get("inventory") as string;
+        const inventory = parseInt(formData.get("inventory") as string, 10);
+        const hasVariants = formData.get("hasVariants") === "true";
 
+        // Validate numeric fields
+        if (isNaN(basePrice)) {
+            return NextResponse.json(
+                { error: "Base price must be a valid number" },
+                { status: 400 }
+            );
+        }
+        if (isNaN(discountedPrice)) {
+            return NextResponse.json(
+                { error: "Discounted price must be a valid number" },
+                { status: 400 }
+            );
+        }
+        if (isNaN(inventory)) {
+            return NextResponse.json(
+                { error: "Inventory must be a valid number" },
+                { status: 400 }
+            );
+        }
+
+        // Validate files
         const video = formData.get("video") as File | null;
         const thumbnail = formData.get("thumbnail") as File | null;
-
-        const tags = formData.getAll("tags[]") as string[];
-
         const images: File[] = [];
+        
         for (const [key, value] of formData.entries()) {
             if (key.startsWith("images[")) {
                 if (value instanceof File) {
@@ -42,17 +75,85 @@ export async function POST(req: NextRequest) {
                 }
             }
         }
-        // validate all data.
 
-        const videoUpload = video ? await UploadFile(video) : null;
-        const thumbnailUpload = thumbnail ? await UploadFile(thumbnail) : null;
-        const imageUploads = await Promise.all(
-            images.map((image) => UploadFile(image))
-        );
+        if (!video) {
+            return NextResponse.json(
+                { error: "Video file is required" },
+                { status: 400 }
+            );
+        }
+        if (!thumbnail && images.length === 0) {
+            return NextResponse.json(
+                { error: "Either thumbnail or at least one image is required" },
+                { status: 400 }
+            );
+        }
+
+        // Process attributes if hasVariants is true
+        const attributes: {
+            name: string;
+            values: { value: string; label: string }[];
+        }[] = [];
+
+        if (hasVariants) {
+            const attributeIndices = new Set<string>();
+            
+            // Get all unique attribute indices
+            for (const [key] of formData.entries()) {
+                const match = key.match(/attributes\[(\d+)\]\[name\]/);
+                if (match) {
+                    attributeIndices.add(match[1]);
+                }
+            }
+
+            // Process each attribute
+            for (const index of attributeIndices) {
+                const name = formData.get(`attributes[${index}][name]`) as string;
+                if (!name) continue;
+
+                const values: { value: string; label: string }[] = [];
+                
+                // Get all values for this attribute
+                for (const [key, value] of formData.entries()) {
+                    const valueMatch = key.match(`attributes\\[${index}\\]\\[values\\]\\[(\\d+)\\]\\[(value|label)\\]`);
+                    if (valueMatch) {
+                        const valueIndex = parseInt(valueMatch[1], 10);
+                        const type = valueMatch[2]; // 'value' or 'label'
+                        
+                        // Initialize if not exists
+                        if (!values[valueIndex]) {
+                            values[valueIndex] = { value: '', label: '' };
+                        }
+                        
+                        // Set the appropriate property
+                        if (type === 'value' || type === 'label') {
+                            values[valueIndex][type] = value as string;
+                        }
+                        // values[valueIndex][type] = value as string;
+                    }
+                }
+
+                // Filter out any empty values and add to attributes array
+                if (name && values.length > 0) {
+                    attributes.push({
+                        name,
+                        values: values.filter(v => v.value && v.label)
+                    });
+                }
+            }
+        }
+
+        // Upload files to Cloudinary
+        const [videoUpload, thumbnailUpload, ...imageUploads] = await Promise.all([
+            UploadFile(video!),
+            thumbnail ? UploadFile(thumbnail) : Promise.resolve(null),
+            ...images.map(image => UploadFile(image))
+        ]);
 
         await connectToDatabase();
 
-        const userId = session.user.id;
+        // Verify user
+        const userId = new Types.ObjectId(session.user.id);
         const user = await User.findById(userId);
 
         if (!user) {
@@ -61,114 +162,107 @@ export async function POST(req: NextRequest) {
                 { status: 404 }
             );
         }
-        // if (user.role !== "admin") {
-        //     return NextResponse.json(
-        //         { error: "Unauthorized" },
-        //         { status: 403 }
-        //     );
-        // }
-
-        const category = await Category.findOneAndUpdate(
-            { name: "Default Category" },
-            { name: "Default Category" },
-            { new: true, upsert: true }
-        );
-
-        if (!category) {
+        if (user.role !== "seller") {
             return NextResponse.json(
-                { error: "Category not found or could not be created" },
-                { status: 404 }
+                { error: "Register as a seller to list products" },
+                { status: 403 }
             );
         }
 
+        const findStore = await Store.findOne({
+            userId
+        })
+
+        if (!findStore) {
+            return NextResponse.json(
+                { error: "You don't currently have a store." },
+                { status: 404 }
+            )
+        }
+
+        // Process category
+        const categoryValue = formData.get("category") as string | null;
+        let categoryId: Types.ObjectId | null = null;
+
+        if (categoryValue) {
+            const category = await Category.findOneAndUpdate(
+                { name: categoryValue },
+                { $setOnInsert: { name: categoryValue } },
+                { new: true, upsert: true }
+            );
+            categoryId = category._id;
+        } else {
+            // Fallback to default category if none provided
+            const defaultCategory = await Category.findOneAndUpdate(
+                { name: "default" },
+                { $setOnInsert: { name: "default" } },
+                { new: true, upsert: true }
+            );
+            categoryId = defaultCategory._id;
+        }
+
+        // Process tags
+        const tags = formData.getAll("tags[]") as string[];
         const tagsDocuments = await Promise.all(
             tags.map(async (tag) => {
                 const trimmedTag = tag.trim();
                 if (!trimmedTag) return null;
-                const existingTag = await Tags.findOne({ name: trimmedTag });
-                if (existingTag) {
-                    return existingTag._id;
-                }
-                const newTag = await Tags.create({ name: trimmedTag });
+                const existingTag = await Tag.findOne({ name: trimmedTag });
+                if (existingTag) return existingTag._id;
+                
+                const newTag = await Tag.create({ 
+                    name: trimmedTag, 
+                });
                 return newTag._id;
             })
         );
-        const validTags = tagsDocuments.filter((tagId) => tagId !== null);
-        if (validTags.length === 0) {
-            return NextResponse.json(
-                { error: "No valid tags provided" },
-                { status: 400 }
-            );
-        }
+        const validTags = tagsDocuments.filter((tagId): tagId is Types.ObjectId => tagId !== null);
 
+        // Generate slug
+        const slug = title.toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/--+/g, '-')
+            .trim();
+        
+        // Create product
         const product = await Product.create({
             userId,
-            name: title,
-            description,
-            basePrice: parseFloat(basePrice),
-            discount: parseFloat(discountedPrice),
-            showPrice: showPrice === "true",
-            slug: `${title}-123`,
-            sku: sku || undefined,
-            stock: parseInt(inventory, 10),
-            category: category?._id,
-            tags: validTags,
-            video: videoUpload,
-            thumbnail: thumbnailUpload ? thumbnailUpload : null,
-            images: imageUploads
-        });
-
-        if (!product) {
-            return NextResponse.json(
-                { error: "Product creation failed" },
-                { status: 500 }
-            );
-        }
-        console.log(product);
-
-        console.log({videoUpload, thumbnailUpload, imageUploads});
-
-        console.log({
             title,
+            slug,
             description,
             basePrice,
             discountedPrice,
             showPrice,
-            sku,
+            hasVariants,
+            sku: sku || undefined,
             inventory,
-            tags,
-            videoName: video?.name,
-            video: video,
-            thumbnailName: thumbnail?.name,
-            thumbnail,
-            imageCount: images.length,
-            images: images
+            category: categoryId,
+            tags: validTags,
+            video: videoUpload,
+            thumbnail: thumbnailUpload || imageUploads[0],
+            images: imageUploads,
+            attributes: attributes.length > 0 ? attributes : undefined
         });
 
         return NextResponse.json(
-        {
-            success: true,
-            message: "Form data received",
-            data: {
-                title,
-                description,
-                basePrice,
-                discountedPrice,
-                showPrice,
-                sku,
-                inventory,
-                tags,
-                video: video?.name,
-                thumbnail: thumbnail?.name,
-                imageCount: images.length,
+            {
+                success: true,
+                message: "Product created successfully",
+                data: {
+                    id: product._id,
+                    title: product.title,
+                    slug: product.slug,
+                    attributes: product.attributes // Include in response for verification
+                }
             },
-        },
-        { status: 200 }
+            { status: 201 }
         );
+
     } catch (error) {
-        console.error("Upload error:", error);
+        console.error("Product creation error:", error);
         return NextResponse.json(
-            { error: "Internal server error" },
+            { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
             { status: 500 }
         );
     }

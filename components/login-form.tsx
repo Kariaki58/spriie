@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { signIn } from "next-auth/react"
+import Link from "next/link";
 
 
 export function LoginForm({
@@ -27,16 +28,16 @@ export function LoginForm({
         <div className="grid gap-3">
           <div className="flex items-center">
             <Label htmlFor="password">Password</Label>
-            <a
+            <Link
               href="#"
               className="ml-auto text-sm underline-offset-4 hover:underline"
             >
               Forgot your password?
-            </a>
+            </Link>
           </div>
           <Input id="password" type="password" required />
         </div>
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-800">
           Login
         </Button>
         <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
@@ -44,7 +45,7 @@ export function LoginForm({
             Or continue with
           </span>
         </div>
-        <Button variant="outline" className="w-full" onClick={() => signIn("google", { callbackUrl: '/' })}>
+        <Button variant="outline" className="w-full hover:bg-emerald-100" onClick={() => signIn("google", { callbackUrl: '/select-account' })}>
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             viewBox="0 0 24 24"

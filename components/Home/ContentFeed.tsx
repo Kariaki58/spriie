@@ -3,28 +3,30 @@ import { useState, useEffect, useRef } from 'react';
 import ProductScreen from './ProductScreen';
 import { Heart } from 'lucide-react';
 
-export default function ContentFeed() {
-    const [products, setProducts] = useState<any[]>([]);
+
+export interface Product {
+    _id: string;
+    name: string;
+    description: string;
+    basePrice: number;
+    discount: number;
+    video: string;
+    images: string[];
+    thumbnail: string;
+    userId: string;
+}
+
+export type ContentFeedProps = {
+  products: Product[];
+};
+
+export default function ContentFeed({ products }: ContentFeedProps) {
     const [currentProductIndex, setCurrentProductIndex] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
     const touchStartYRef = useRef(0);
     const [showHeart, setShowHeart] = useState(false);
     const [heartPosition, setHeartPosition] = useState({ x: 0, y: 0 });
 
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const res = await fetch('/api/content');
-                const data = await res.json();
-
-                console.log(data);
-                setProducts(data.message);
-            } catch (error) {
-                console.error("Failed to fetch products:", error);
-            }
-        };
-        fetchProducts();
-    }, []);
 
     const handleScroll = (e: WheelEvent) => {
         e.preventDefault();
@@ -86,9 +88,6 @@ export default function ContentFeed() {
         }
     }, [products]);
 
-    if (products?.length === 0) {
-        return <div className="flex-1 flex items-center justify-center">Loading...</div>;
-    }
 
     return (
         <div 

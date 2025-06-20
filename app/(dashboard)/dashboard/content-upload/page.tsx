@@ -14,6 +14,16 @@ type OptionType = {
   value: string;
 };
 
+const predefinedCategories: OptionType[] = [
+  { value: 'fashion', label: 'Fashion & Apparel' },
+  { value: 'beauty', label: 'Beauty & Skincare' },
+  { value: 'electronics', label: 'Electronics' },
+  { value: 'home', label: 'Home & Living' },
+  { value: 'health', label: 'Health & Wellness' },
+  { value: 'jewelry', label: 'Jewelry & Accessories' },
+  { value: 'food', label: 'Food & Beverage' },
+];
+
 const videoProductSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
@@ -24,11 +34,22 @@ const videoProductSchema = z.object({
   sku: z.string().optional(),
   inventory: z.string().refine(val => val === "" || !isNaN(parseInt(val)), "Inventory must be a number"),
   showPrice: z.boolean(),
+  hasVariants: z.boolean(),
   tags: z.array(z.object({
     label: z.string(),
     value: z.string()
   })).optional(),
+  category: z.object({
+    label: z.string(),
+    value: z.string()
+  }).optional(),
 });
+
+type ProductAttribute = {
+  id: string;
+  name: string;
+  values: OptionType[];
+};
 
 type VideoProductFormValues = z.infer<typeof videoProductSchema>;
 
@@ -42,6 +63,7 @@ interface VideoProduct extends VideoProductFormValues {
     file: File;
     preview: string;
   }[];
+  attributes: ProductAttribute[];
 }
 
 const DashboardContentUpload = () => {
@@ -59,8 +81,10 @@ const DashboardContentUpload = () => {
       basePrice: '',
       discountedPrice: '',
       showPrice: true,
+      hasVariants: false,
       sku: '',
-      inventory: ''
+      inventory: '',
+      attributes: []
     }
   ]);
   const [activeTab, setActiveTab] = useState('upload');
@@ -72,6 +96,53 @@ const DashboardContentUpload = () => {
     resolver: zodResolver(videoProductSchema),
     mode: 'onBlur'
   });
+
+  const addNewAttribute = (productId: number) => {
+    setVideoProducts(videoProducts.map(vp => 
+      vp.id === productId ? { 
+        ...vp, 
+        attributes: [
+          ...vp.attributes,
+          { id: Date.now().toString(), name: "", values: [] }
+        ]
+      } : vp
+    ));
+  };
+
+  const removeAttribute = (productId: number, attributeId: string) => {
+    setVideoProducts(videoProducts.map(vp => 
+      vp.id === productId ? { 
+        ...vp, 
+        attributes: vp.attributes.filter(attr => attr.id !== attributeId)
+      } : vp
+    ));
+  };
+
+  const updateAttributeName = (productId: number, attributeId: string, newName: string) => {
+    setVideoProducts(videoProducts.map(vp => 
+      vp.id === productId ? { 
+        ...vp, 
+        attributes: vp.attributes.map(attr => 
+          attr.id === attributeId ? { ...attr, name: newName } : attr
+        )
+      } : vp
+    ));
+  };
+
+  const handleAttributeValuesChange = (
+    productId: number,
+    attributeId: string,
+    newValues: MultiValue<OptionType>
+  ) => {
+    setVideoProducts(videoProducts.map(vp => 
+      vp.id === productId ? { 
+        ...vp, 
+        attributes: vp.attributes.map(attr => 
+          attr.id === attributeId ? { ...attr, values: [...newValues] } : attr
+        )
+      } : vp
+    ));
+  };
 
   const handleFileChange = (id: number, type: 'file' | 'thumbnail', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -125,8 +196,10 @@ const DashboardContentUpload = () => {
       basePrice: '',
       discountedPrice: '',
       showPrice: true,
+      hasVariants: false,
       sku: '',
-      inventory: ''
+      inventory: '',
+      attributes: []
     }]);
   };
 
@@ -194,7 +267,6 @@ const DashboardContentUpload = () => {
     
     setVideoProducts(updatedProducts);
     
-    // Update form value and trigger validation
     if (typeof value === 'string') {
       setValue(field as keyof VideoProductFormValues, value, {
         shouldValidate: true
@@ -222,8 +294,8 @@ const DashboardContentUpload = () => {
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("submitting");
     setIsSubmitting(true);
+    console.log(videoProducts)
     
     try {
       const missingFiles = videoProducts.some(vp => !vp.file || !vp.thumbnail || vp.images.length === 0);
@@ -249,9 +321,8 @@ const DashboardContentUpload = () => {
         formData.append('basePrice', vp.basePrice);
         formData.append('discountedPrice', vp.discountedPrice);
         formData.append('showPrice', String(vp.showPrice));
-        if (vp.sku) {
-          formData.append('sku', vp.sku);
-        }
+        formData.append('hasVariants', String(vp.hasVariants));
+        if (vp.sku) formData.append('sku', vp.sku);
         formData.append('inventory', vp.inventory);
         
         if (vp.file) formData.append('video', vp.file);
@@ -261,13 +332,27 @@ const DashboardContentUpload = () => {
           formData.append('tags[]', tag.value);
         });
         
+        if (vp.category) {
+          formData.append('category', vp.category.value);
+        }
+        
         vp.images.forEach((image, index) => {
           formData.append(`images[${index}]`, image.file);
         });
         
+        // Add attributes to form data
+        // In your onSubmit function, update the attribute handling:
+        vp.attributes.forEach((attr, index) => {
+          formData.append(`attributes[${index}][name]`, attr.name);
+          attr.values.forEach((value, valueIndex) => {
+            formData.append(`attributes[${index}][values][${valueIndex}][value]`, value.value);
+            formData.append(`attributes[${index}][values][${valueIndex}][label]`, value.label);
+          });
+        });
+        
         return formData;
       });
-  
+
       const responses = await Promise.all(
         formDataArray.map(formData =>
           fetch('/api/content/upload', {
@@ -292,14 +377,14 @@ const DashboardContentUpload = () => {
           basePrice: '',
           discountedPrice: '',
           showPrice: true,
+          hasVariants: false,
           sku: '',
-          inventory: ''
+          inventory: '',
+          attributes: []
         }]);
         
-        // reset();
         alert("Products uploaded successfully!");
       } else {
-        // Handle errors if any request failed
         const errors = await Promise.all(
           responses.map(async r => {
             if (!r.ok) {
@@ -347,8 +432,7 @@ const DashboardContentUpload = () => {
           </button>
         </div>
         
-        <form onSubmit={onSubmit} 
-              className="space-y-6">
+        <form onSubmit={onSubmit} className="space-y-6">
           {videoProducts.map((vp) => (
             <div 
               key={vp.id} 
@@ -434,7 +518,7 @@ const DashboardContentUpload = () => {
               
               <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg mb-4">
                 <h4 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  <DollarSign className="h-4 w-4 mr-2" /> Pricing
+                  <span className="text-x mr-2">₦</span> Pricing
                 </h4>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -444,7 +528,7 @@ const DashboardContentUpload = () => {
                     </label>
                     <div className="relative rounded-md shadow-sm">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
+                        <span className="text-gray-500 dark:text-gray-400 sm:text-sm">₦</span>
                       </div>
                       <input
                         type="text"
@@ -472,7 +556,7 @@ const DashboardContentUpload = () => {
                     </label>
                     <div className="relative rounded-md shadow-sm">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
+                        <span className="text-gray-500 dark:text-gray-400 sm:text-sm">₦</span>
                       </div>
                       <input
                         type="text"
@@ -515,29 +599,182 @@ const DashboardContentUpload = () => {
                   </label>
                 </div>
               </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Inventory
-                </label>
-                <input
-                  type="number"
-                  value={vp.inventory}
-                  onChange={(e) => handleInputChange(vp.id, 'inventory', e.target.value)}
-                  className={`w-full md:w-1/3 px-3 py-2 border ${
-                    errors.inventory 
-                      ? 'border-red-500' 
-                      : 'border-gray-300 dark:border-gray-600'
-                  } rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white`}
-                  placeholder="Available quantity"
-                  min="0"
-                />
-                {errors.inventory && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                    {errors.inventory.message}
-                  </p>
-                )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Inventory
+                  </label>
+                  <input
+                    type="number"
+                    value={vp.inventory}
+                    onChange={(e) => handleInputChange(vp.id, 'inventory', e.target.value)}
+                    className={`w-full px-3 py-2 border ${
+                      errors.inventory 
+                        ? 'border-red-500' 
+                        : 'border-gray-300 dark:border-gray-600'
+                    } rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white`}
+                    placeholder="Available quantity"
+                    min="0"
+                  />
+                  {errors.inventory && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                      {errors.inventory.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Category
+                  </label>
+                  <CreatableSelect
+                    components={{
+                      DropdownIndicator: () => <ChevronDown className="h-4 w-4 text-gray-400 mr-2" />,
+                      ClearIndicator: () => <X className="dark:text-white h-4 w-4 text-gray-400 mr-1" />
+                    }}
+                    options={predefinedCategories}
+                    value={vp.category}
+                    onChange={(newValue) => {
+                      setVideoProducts(videoProducts.map(p => 
+                        p.id === vp.id ? { ...p, category: newValue as OptionType } : p
+                      ));
+                    }}
+                    className="react-select-container dark:text-white"
+                    classNamePrefix="react-select"
+                    placeholder="Select or create a category..."
+                    formatCreateLabel={(inputValue) => `Create "${inputValue}"`}
+                    noOptionsMessage={() => "Type to create a category"}
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        backgroundColor: 'var(--bg-color)',
+                        borderColor: 'var(--border-color)',
+                        minHeight: '42px',
+                        '&:hover': {
+                          borderColor: 'var(--border-hover)'
+                        }
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: 'var(--bg-color)',
+                        borderColor: 'var(--border-color)'
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: 'var(--text-color)'
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: 'var(--text-color)'
+                      })
+                    }}
+                  />
+                </div>
               </div>
+
+              {/* Variants Toggle */}
+              <div className="mb-4">
+                <div className="flex items-center">
+                  <input
+                    id={`has-variants-${vp.id}`}
+                    type="checkbox"
+                    checked={vp.hasVariants}
+                    onChange={(e) => handleInputChange(vp.id, 'hasVariants', e.target.checked)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 dark:border-gray-600 rounded"
+                  />
+                  <label htmlFor={`has-variants-${vp.id}`} className="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    This product has variants (e.g., size, color)
+                  </label>
+                </div>
+              </div>
+
+              {vp.hasVariants && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Product Attributes (e.g., Size, Color)
+                  </label>
+                  
+                  {vp.attributes?.map((attr) => (
+                    <div key={attr.id} className="mb-4 p-3 border border-gray-200 dark:border-gray-700 rounded-md">
+                      <div className="flex justify-between items-center mb-3">
+                        <input
+                          type="text"
+                          value={attr.name}
+                          onChange={(e) => updateAttributeName(vp.id, attr.id, e.target.value)}
+                          placeholder="Attribute name (e.g., Size)"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeAttribute(vp.id, attr.id)}
+                          className="ml-2 text-red-500 hover:text-red-700 dark:hover:text-red-400 p-1"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Values
+                      </label>
+                      <CreatableSelect
+                        isMulti
+                        components={{
+                          DropdownIndicator: () => <ChevronDown className="h-4 w-4 text-gray-400 mr-2" />,
+                          ClearIndicator: () => <X className="dark:text-white h-4 w-4 text-gray-400 mr-1" />
+                        }}
+                        value={attr.values}
+                        onChange={(newValue) => handleAttributeValuesChange(vp.id, attr.id, newValue)}
+                        placeholder="Type and press enter to add values..."
+                        noOptionsMessage={() => "Type to create values"}
+                        formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
+                        className="react-select-container"
+                        classNamePrefix="react-select"
+                        styles={{
+                          control: (base) => ({
+                            ...base,
+                            backgroundColor: 'var(--bg-color)',
+                            borderColor: 'var(--border-color)',
+                            minHeight: '42px',
+                            '&:hover': {
+                              borderColor: 'var(--border-hover)'
+                            }
+                          }),
+                          menu: (base) => ({
+                            ...base,
+                            backgroundColor: 'var(--bg-color)',
+                            borderColor: 'var(--border-color)'
+                          }),
+                          multiValue: (base) => ({
+                            ...base,
+                            backgroundColor: 'var(--emerald-100)'
+                          }),
+                          multiValueLabel: (base) => ({
+                            ...base,
+                            color: 'var(--emerald-800)'
+                          }),
+                          multiValueRemove: (base) => ({
+                            ...base,
+                            color: 'var(--emerald-600)',
+                            ':hover': {
+                              backgroundColor: 'var(--emerald-200)',
+                              color: 'var(--emerald-700)'
+                            }
+                          })
+                        }}
+                      />
+                    </div>
+                  ))}
+                  
+                  <button
+                    type="button"
+                    onClick={() => addNewAttribute(vp.id)}
+                    className="mt-2 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center"
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Add Attribute
+                  </button>
+                </div>
+              )}
               
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -765,6 +1002,7 @@ const DashboardContentUpload = () => {
                     --emerald-600: #059669;
                     --emerald-700: #047857;
                     --emerald-800: #065f46;
+                    --text-color: #111827;
                   }
                   .dark {
                     --bg-color: #1f2937;
@@ -775,6 +1013,7 @@ const DashboardContentUpload = () => {
                     --emerald-600: #10b981;
                     --emerald-700: #0d9488;
                     --emerald-800: #115e59;
+                    --text-color: #f3f4f6;
                   }
                 `}</style>
               </div>

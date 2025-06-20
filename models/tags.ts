@@ -2,7 +2,7 @@ import mongoose, { Document } from "mongoose";
 
 
 export interface Tags extends Document {
-    name: string;
+    name: string[];
 }
 
 

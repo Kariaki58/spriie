@@ -1,116 +1,136 @@
-import mongoose, { Document } from "mongoose";
-
+import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IProduct extends Document {
-    userId: mongoose.Types.ObjectId;
+  userId: Types.ObjectId;
+  title: string;
+  slug: string;
+  sku?: string;
+  basePrice: number;
+  discountedPrice: number;
+  category: Types.ObjectId;
+  description: string;
+  inventory: number;
+  video: string;
+  thumbnail: string;
+  images: string[];
+  showPrice: boolean;
+  hasVariants: boolean;
+  attributes: {
     name: string;
-    slug: string;
-    sku: string;
-    basePrice: number;
-    discount: number;
-    category: mongoose.Types.ObjectId;
-    // variants: IVariant[];
-    video: string[];
-    description: string;
-    stock: number;
-    thumbnail: string;
-    images: string[];
-    showPrice: boolean;
-    // aditionalInfo: mongoose.Types.ObjectId;
-    reviews: mongoose.Types.ObjectId[];
-    tags: mongoose.Types.ObjectId[];
+    values: { value: string; label: string }[];
+  }[];
+  tags: Types.ObjectId[];
+  reviews: Types.ObjectId[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// const VariantSchema = new mongoose.Schema({
-//     size: { type: String, required: true },
-//     color: { type: String, required: true },
-//     price: { type: Number, required: true, min: 0 },
-//     stock: { type: Number, required: true, min: 0 },
-//     image: { type: [String], required: true }
-// });
-
-const ProductSchema = new mongoose.Schema(
-    {
-        userId: {
-            type: mongoose.Types.ObjectId,
-            required: true,
-            ref: "User"
-        },
-        name: {
-            type: String,
-            required: true,
-            index: true
-        },
-        sku: {
-            type: String,
-            required: true,
-            index: true
-        },
-        slug: {
-            type: String,
-            required: true,
-            index: true
-        },
-        basePrice: {
-            type: Number,
-            required: true,
-            min: 0
-        },
-        stock: {
-            type: Number,
-            required: true,
-            min: 0
-        },
-        discount: {
-            type: Number,
-            required: true,
-            min: 0
-        },
-        category: {
-            type: mongoose.Types.ObjectId,
-            required: true,
-            ref: "Category"
-        },
-        // variants: {
-        //     type: [VariantSchema],
-        //     required: true
-        // },
-        video: {
-            type: String,
-        },
-        description: {
-            type: String,
-            required: true
-        },
-        thumbnail: {
-            type: String,
-            required: true
-        },
-        images: {
-            type: [String],
-            required: true
-        },
-        showPrice: {
-            type: Boolean,
-            default: true
-        },
-        // aditionalInfo: {
-        //     type: mongoose.Types.ObjectId,
-        //     ref: "ProductPage"
-        // },
-        reviews: {
-            type: [mongoose.Types.ObjectId],
-            ref: "Review"
-        },
-        tags: {
-            type: [mongoose.Types.ObjectId],
-            ref: "Tag"
-        }
+const ProductSchema = new Schema<IProduct>(
+  {
+    userId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
     },
-    { timestamps: true }
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+    sku: {
+      type: String,
+      index: true,
+    },
+    basePrice: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    discountedPrice: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    category: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "Category",
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    inventory: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    video: {
+      type: String,
+      required: true,
+    },
+    thumbnail: {
+      type: String,
+      required: true,
+    },
+    images: {
+      type: [String],
+      required: true,
+      validate: [(val: string[]) => val.length > 0, "At least one image is required"],
+    },
+    showPrice: {
+      type: Boolean,
+      default: true,
+    },
+    hasVariants: {
+      type: Boolean,
+      default: false,
+    },
+    attributes: [
+      {
+        name: { type: String, required: true },
+        values: [
+          {
+            value: { type: String, required: true },
+            label: { type: String, required: true },
+          },
+        ],
+      },
+    ],
+    tags: [{
+      type: Schema.Types.ObjectId,
+      ref: "Tag",
+    }],
+    reviews: [{
+      type: Schema.Types.ObjectId,
+      ref: "Review",
+    }],
+  },
+  { timestamps: true }
 );
 
+// Compound index for faster queries
 ProductSchema.index({ userId: 1, slug: 1 }, { unique: true });
+ProductSchema.index({ title: "text", description: "text" });
 
-const Product = mongoose.models.Product || mongoose.model<IProduct>("Product", ProductSchema);
+// Virtual for discount percentage
+ProductSchema.virtual("discountPercentage").get(function (this: IProduct) {
+  return Math.round(((this.basePrice - this.discountedPrice) / this.basePrice) * 100);
+});
+
+// Ensure virtuals are included in toJSON output
+ProductSchema.set("toJSON", { virtuals: true });
+
+const Product =
+  mongoose.models.Product || mongoose.model<IProduct>("Product", ProductSchema);
+
 export default Product;

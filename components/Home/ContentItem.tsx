@@ -62,10 +62,10 @@ export default function ContentItem({ content, onNext, onPrev }: any) {
                         onClick={togglePlay}
                     />
                 ) : (
-                    <Image
+                    <img
                         src={mediaItems[currentSlide].url}
-                        width={100}
-                        height={100}
+                        // width={100}
+                        // height={100}
                         alt={content.name}
                         className="h-full w-full object-contain bg-black"
                     />
