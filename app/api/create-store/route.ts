@@ -7,7 +7,6 @@ import mongoose from "mongoose";
 import { options } from "../auth/options";
 import { z } from "zod";
 
-
 const addressSchema = z.object({
   street: z.string().min(1, "Street is required"),
   city: z.string().min(1, "City is required"),
@@ -54,14 +53,13 @@ const storeSchema = z.object({
   categories: z.array(z.string().min(1)).min(1, "At least one category required"),
   address: addressSchema,
   contact: contactSchema,
-  colors: colorSchema,
+  colors: colorSchema, // Added to store schema
   openingHours: z.array(openingDaySchema).length(7, "Need all 7 days"),
   paymentMethods: z.array(z.string()).optional(),
   about: z.string().min(20).optional(),
   socialMedia: socialMediaSchema.optional(),
   faqs: z.array(faqSchema).optional()
 });
-
 
 export async function GET(req: NextRequest) {
     return NextResponse.json({
@@ -70,9 +68,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-
     try {
-        // Authentication check
         const session = await getServerSession(options);
         if (!session) {
             return NextResponse.json(
@@ -144,7 +140,7 @@ export async function POST(req: NextRequest) {
             sunday: formatOpeningHour(body.openingHours.find((day: any) => day.day === 'Sunday'))
         };
 
-        // Create store document
+        // Create store document with colors included
         const storeData = {
             userId: new mongoose.Types.ObjectId(userId),
             storeName: body.storeName,
@@ -155,6 +151,11 @@ export async function POST(req: NextRequest) {
             address: `${body.address.street}, ${body.address.city}, ${body.address.state}, ${body.address.country}`,
             phone: body.contact.phone,
             email: body.contact.email,
+            colors: { // Added colors object
+                primary: body.colors.primary,
+                secondary: body.colors.secondary,
+                accent: body.colors.accent
+            },
             openingHours,
             paymentMethods: body.paymentMethods || [],
             about: body.about || body.description,
@@ -168,32 +169,27 @@ export async function POST(req: NextRequest) {
                 question: faq.question,
                 answer: faq.answer
             })) || [],
-            storeUrl: generateUniqueStoreUrl(body.storeName),
-            colors: {
-                primary: body.colors.primary,
-                secondary: body.colors.secondary,
-                accent: body.colors.accent
-            }
+            storeUrl: generateUniqueStoreUrl(body.storeName)
         };
 
-        
         // Save to database
         const newStore = await Store.create(storeData);
 
+        // Update user role to seller
         user.role = "seller";
-
         await user.save();
 
         return NextResponse.json(
             { 
                 message: "Store created successfully",
                 store: {
-                id: newStore._id,
-                name: newStore.storeName,
-                url: newStore.storeUrl
+                    id: newStore._id,
+                    name: newStore.storeName,
+                    url: newStore.storeUrl,
+                    colors: newStore.colors // Include colors in response
                 }
             },
-        { status: 201 }
+            { status: 201 }
         );
 
     } catch (error) {
@@ -205,7 +201,6 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// Helper function to format opening hours
 function formatOpeningHour(dayData: any) {
   if (!dayData || !dayData.open) {
     return { closed: true };
@@ -225,5 +220,5 @@ function generateUniqueStoreUrl(storeName: string) {
     .replace(/\s+/g, '-')
     .replace(/[^\w-]/g, '');
 
-  return `${subdomain}.${process.env.DOMAIN_NAME}`;
+  return `${subdomain}.${process.env.NEXT_PUBLIC_DOMAIN_NAME}`;
 }

@@ -12,6 +12,11 @@ export interface IStore extends Document {
     phone: string;
     email: string;
     openingHours: Object;
+    colors: {  // Add this
+        primary: string;
+        secondary: string;
+        accent: string;
+    };
     paymentMethods: string[];
     about: string;
     social: {
@@ -45,6 +50,23 @@ const StoreSchema = new mongoose.Schema({
     storeName: {
         type: String,
         required: true
+    },
+    colors: {
+        primary: {
+            type: String,
+            required: true,
+            default: "#3b82f6"
+        },
+        secondary: {
+            type: String,
+            required: true,
+            default: "#10b981"
+        },
+        accent: {
+            type: String,
+            required: true,
+            default: "#f59e0b"
+        }
     },
     category: {
         type: [String],

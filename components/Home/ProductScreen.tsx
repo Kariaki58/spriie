@@ -166,7 +166,7 @@ export default function ProductScreen({ product, isActive }: any) {
             >
                 {mediaItems.map((media, index) => (
                     <div 
-                        key={index} 
+                        key={media._id} 
                         className="flex-shrink-0 w-full h-full snap-center relative group"
                         onMouseEnter={() => media.type === 'video' && setShowPlayButton(true)}
                         onMouseLeave={() => media.type === 'video' && setShowPlayButton(false)}
@@ -268,10 +268,10 @@ export default function ProductScreen({ product, isActive }: any) {
             <div className="absolute right-4 bottom-24 flex flex-col items-center space-y-4 z-10">
                 <div className="flex flex-col items-center">
                     <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
-                        <Link href="/profile">
+                        <Link href={session?.user?.id === product.userId._id ? '/profile' : `/profile/${product.userId._id}`}>
 
                             <img 
-                                src={!session?.user?.image ? '/default.jpg': session?.user.image} 
+                                src={product.userId.avatar} 
                                 alt="User profile"
                                 // width={100}
                                 // height={100}
@@ -280,7 +280,7 @@ export default function ProductScreen({ product, isActive }: any) {
                             />
                         </Link>
                     </div>
-                    <span className="text-white text-xs mt-1">@{product.userId.slice(-4)}</span>
+                    <span className="text-white text-xs mt-1">@{product.userId._id.slice(-4)}</span>
                 </div>
 
                 <button 

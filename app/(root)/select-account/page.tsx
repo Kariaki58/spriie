@@ -12,7 +12,6 @@ const AccountTypeSelector = () => {
 
   const handleSelect = (type: AccountType) => {
     setSelectedType(type);
-    // Redirect based on account type
     switch (type) {
       case 'vendor':
         router.push('/store');

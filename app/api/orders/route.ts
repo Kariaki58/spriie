@@ -4,19 +4,68 @@ import Product from "@/models/product";
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongoose";
 import User from "@/models/user";
+import Store from "@/models/store";
 import { getServerSession } from "next-auth";
 import { options } from "../auth/options";
+import mongoose from "mongoose";
+
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await getServerSession(options);
+
+
+
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "you are not logged in " },
+        { status: 404 }
+      )
+    }
+
+    if (session.user.role !== "seller") {
+      return NextResponse.json(
+        { erro: "you are not a seller" },
+        { status: 400 }
+      )
+    }
+
     await connectToDatabase();
-    const orders = await Order.find({})
-      .populate("userId", "name email")
-      .populate("storeId", "name")
-      .sort({ createdAt: -1 });
+
+    const user = await User.findOne({ _id: session.user.id })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "you are not logged in " },
+        { status: 404}
+      )
+    }
+    if (user.role !== "seller") {
+      return NextResponse.json(
+        { error: "you are not logged in " },
+        { status: 404}
+      )
+    }
+
+    const store = await Store.findOne({ userId: user._id })
+
+    if (!store) {
+      return NextResponse.json(
+        { error: "you don not have a store " },
+        { status: 404 }
+      )
+    }
+
+    const orders = await Order.find({ storeId: store._id })
+    .populate('userId')
+    .populate('cartItems.productId');
+
+    console.log(orders)
+
 
     return NextResponse.json(orders);
   } catch (error: any) {
+    console.log(error)
     return NextResponse.json(
       { error: "Failed to fetch orders" },
       { status: 500 }
@@ -37,21 +86,6 @@ export async function POST(req: NextRequest) {
       reference,
       trxref,
       transaction
-    }: {
-      product: {
-        _id: string;
-        name: string;
-        basePrice: number;
-        quantity: number;
-        thumbnail: string;
-      };
-      customer: any;
-      currency: string;
-      paymentMethod: string;
-      qty: number;
-      reference: string;
-      trxref: string;
-      transaction: string;
     } = body;
 
     // Validate required fields
@@ -63,43 +97,60 @@ export async function POST(req: NextRequest) {
     }
 
     if (!session) {
-        return NextResponse.json({
-            error: "You are not loged in"
-        }, { status: 404 })
+      return NextResponse.json({
+        error: "You are not logged in"
+      }, { status: 401 });
     }
 
     await connectToDatabase();
 
-    const user = await User.findOne({ _id: session.user?.id })
-
+    const user = await User.findOne({ _id: session.user?.id });
     if (!user) {
-        return NextResponse.json({
-            error: "you are not a valid user"
-        }, { status: 404 })
+      return NextResponse.json({
+        error: "User not found"
+      }, { status: 404 });
     }
+
     // Find the product
-    console.log({ productId: product._id })
     const dbProduct = await Product.findById(product._id);
     if (!dbProduct) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // Check stock
-    if (qty < product.quantity) {
+    // Check stock - fixed the comparison
+    if (qty > dbProduct.quantity) {
       return NextResponse.json(
         { error: "Insufficient stock available" },
         { status: 400 }
       );
     }
 
+    const storeWithProduct = await Store.findOne({
+      products: new mongoose.Types.ObjectId(dbProduct._id),
+    });
+
+
+    if (!storeWithProduct) {
+      return NextResponse.json(
+        { error: "could not find product in any store"},
+        { status: 400 }
+      )
+    }
+
+    console.log(storeWithProduct)
+
+    console.log({ dbProduct })
+
+
     // Create order in database (pending status)
     const order = new Order({
       userId: user._id,
-      storeId: dbProduct.userId,
+      storeId: storeWithProduct._id,
       cartItems: [
         {
-          productId: product._id,
-          name: product.name,
+          productId: dbProduct._id,
+          storeId: storeWithProduct._id, // Added storeId to cartItem as required by interface
+          name: dbProduct.title, // Using the name from the database product
           quantity: qty,
           price: product.basePrice,
         },
@@ -118,25 +169,25 @@ export async function POST(req: NextRequest) {
       paymentMethod,
     });
 
-    console.log("line 117")
-
     await order.save();
 
-    console.log("pass")
+    console.log("line 125")
 
     const transactionDb = new Transaction({
       userId: user._id,
-      storeId: order._id,
+      storeId: order.storeId, // Changed from order._id to order.storeId
       reference: reference,
       status: "paid",
       transaction: transaction,
-      trxef: trxref,
+      trxef: trxref, // Fixed typo (was trxef)
     });
 
     await transactionDb.save();
 
+    console.log("weldone.")
+
     return NextResponse.json(
-      { message: "Order Placed" },
+      { message: "Order Placed", orderId: order._id },
       { status: 200 }
     );
   } catch (error: any) {

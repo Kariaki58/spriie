@@ -18,6 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: { storeName: s
     try {
         await connectToDatabase();
         const { storeName } = await params;
+        console.log({ storeName })
         const subdomain = `${storeName}.${process.env.DOMAIN_NAME}`;
         console.log(subdomain)
         const store = await Store.findOne({ storeUrl: subdomain }).populate("products").exec()

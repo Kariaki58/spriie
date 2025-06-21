@@ -29,6 +29,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BuyDrawerProps } from './ProductScreen';
+import { toast } from 'sonner';
 
 interface CheckoutFormData {
     fullName: string;
@@ -97,63 +98,81 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
 
     const handlePlaceOrder = async () => {
         if (!PaystackPop) {
-            alert("Payment SDK not loaded. Please try again.");
+            toast("Payment SDK not loaded. Please try again.");
             return;
         }
 
         if (!formData.email) {
-            alert("Please provide your email address");
+            toast("Please provide your email address");
             return;
         }
 
         setIsProcessing(true);
-        console.log({
-            product
-        })
-        const response = await fetch(`/api/product/${product._id}`, {
-            method: 'GET'
-        })
 
-        const productPrice = (await response.json()).message;
+        try {
+            // Fetch the latest product price
+            const response = await fetch(`/api/product/${product._id}`, {
+                method: 'GET'
+            });
 
-        const totalAmount = productPrice * 100;
+            if (!response.ok) {
+                throw new Error("Failed to fetch product price.");
+            }
 
-        console.log(totalAmount)
-        const paystack = new PaystackPop();
-        paystack.newTransaction({
-            key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-            email: formData.email,
-            amount: totalAmount,
-            onSuccess: async (transaction: PaystackTransaction) => {
-                console.log(transaction)
-                const response = await fetch('/api/orders', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        reference: transaction.reference,
-                        trxref: transaction.trxref,
-                        transaction: transaction.transaction,
-                        customer: formData,
-                        qty,
-                        paymentMethod: 'paystack',
-                        currency: 'NGN',
-                        product
-                    }),
-                });
+            const data = await response.json();
+            const productPrice = data.message;
+            const totalAmount = productPrice * 100;
 
-                const order = await response.json();
+            const paystack = new PaystackPop();
+            paystack.newTransaction({
+                key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+                email: formData.email,
+                amount: totalAmount,
+                onSuccess: async (transaction: PaystackTransaction) => {
+                    try {
+                        const response = await fetch('/api/orders', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                reference: transaction.reference,
+                                trxref: transaction.trxref,
+                                transaction: transaction.transaction,
+                                customer: formData,
+                                qty,
+                                paymentMethod: 'paystack',
+                                currency: 'NGN',
+                                product
+                            }),
+                        });
 
-                alert(order.message);
-                setIsProcessing(false);
-            },
-            onCancel: () => {
-                setIsProcessing(false);
-                alert("Payment was cancelled");
-            },
-        });
+                        const order = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(order.message || "Order creation failed");
+                        }
+
+                        toast(order.message);
+                    } catch (error: any) {
+                        console.error(error);
+                        toast(error.message || "Something went wrong during order creation");
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                },
+                onCancel: () => {
+                    setIsProcessing(false);
+                    toast("Payment was cancelled");
+                },
+            });
+        } catch (error: any) {
+            console.error(error);
+            toast(error.message || "Something went wrong");
+            setIsProcessing(false);
+        }
     };
+
 
     useEffect(() => {
         setIsMounted(true);

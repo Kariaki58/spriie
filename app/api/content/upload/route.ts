@@ -245,6 +245,11 @@ export async function POST(req: NextRequest) {
             attributes: attributes.length > 0 ? attributes : undefined
         });
 
+        await Store.findByIdAndUpdate(findStore._id, {
+            $push: { products: product._id }
+        });
+
+
         return NextResponse.json(
             {
                 success: true,

@@ -10,31 +10,37 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
-type OrderStatus = 'paid' | 'received' | 'shipped' | 'completed' | 'cancelled';
+type OrderStatus = 'pending' | 'paid' | 'received' | 'shipped' | 'completed' | 'cancelled';
 
 interface Order {
-    id: string;
+    _id: string;
     order_id: string;
-    timestamp: string;
-    payment: {
-        method: string;
-        amount: number;
-    };
-    data: {
-        status: OrderStatus;
-        items: string[]
-    };
-    product: {
-        name: string;
-        photo: string;
-        store_id: string;
-    };
-    customer: {
-        name: string;
+    createdAt: string;
+    paymentMethod: string;
+    status: OrderStatus;
+    cartItems: {
+        product: {
+            _id: string;
+            name: string;
+            price: number;
+            images: string[];
+        };
+        quantity: number;
+    }[];
+    shippingAddress: {
+        fullName: string;
         email: string;
         phone: string;
-        location: string;
-    }
+        address: string;
+        city: string;
+        state: string;
+        zipCode: string;
+        country: string;
+    };
+    userId: {
+        name: string;
+        email: string;
+    };
 }
 
 const OrdersManagement = () => {
@@ -48,145 +54,58 @@ const OrdersManagement = () => {
     const [statusUpdate, setStatusUpdate] = useState<OrderStatus | ''>('');
 
     useEffect(() => {
-        const dummyOrders: Order[] = [
-            {
-                id: '1',
-                order_id: '#ORD-001',
-                timestamp: '2023-05-15T10:30:00Z',
-                payment: {
-                    method: 'Credit Card',
-                    amount: 124.99
-                },
-                data: {
-                    status: 'received',
-                    items: ['Wireless Headphones Pro X', 'USB-C Fast Charging Cable']
-                },
-                product: {
-                    name: 'Electronics Bundle',
-                    photo: '',
-                    store_id: 'store-1'
-                },
-                customer: {
-                    name: 'Alex Johnson',
-                    email: 'alex.johnson@example.com',
-                    phone: '+1 (555) 123-4567',
-                    location: '123 Main St, Apt 4B, New York, NY 10001'
-                }
-            },
-            {
-                id: '2',
-                order_id: '#ORD-002',
-                timestamp: '2023-05-14T14:45:00Z',
-                payment: {
-                    method: 'PayPal',
-                    amount: 45.99
-                },
-                data: {
-                    status: 'paid',
-                    items: ['Premium Smart Watch Band']
-                },
-                product: {
-                    name: 'Premium Smart Watch Band',
-                    photo: '',
-                    store_id: 'store-2'
-                },
-                customer: {
-                    name: 'Maria Garcia',
-                    email: 'maria.garcia@example.com',
-                    phone: '+1 (555) 987-6543',
-                    location: '456 Oak Ave, Los Angeles, CA 90015'
-                }
-            },
-            {
-                id: '3',
-                order_id: '#ORD-003',
-                timestamp: '2023-05-16T09:15:00Z',
-                payment: {
-                    method: 'Credit Card',
-                    amount: 89.99
-                },
-                data: {
-                    status: 'shipped',
-                    items: ['Wireless Earbuds', 'Charging Case']
-                },
-                product: {
-                    name: 'Wireless Earbuds Bundle',
-                    photo: '',
-                    store_id: 'store-3'
-                },
-                customer: {
-                    name: 'James Wilson',
-                    email: 'james.wilson@example.com',
-                    phone: '+1 (555) 456-7890',
-                    location: '789 Pine Rd, Chicago, IL 60601'
-                }
-            },
-            {
-                id: '4',
-                order_id: '#ORD-004',
-                timestamp: '2023-05-17T16:20:00Z',
-                payment: {
-                    method: 'Apple Pay',
-                    amount: 29.99
-                },
-                data: {
-                    status: 'completed',
-                    items: ['Bluetooth Speaker']
-                },
-                product: {
-                    name: 'Portable Bluetooth Speaker',
-                    photo: '',
-                    store_id: 'store-1'
-                },
-                customer: {
-                    name: 'Sarah Miller',
-                    email: 'sarah.miller@example.com',
-                    phone: '+1 (555) 789-0123',
-                    location: '321 Elm St, Apt 7C, Boston, MA 02108'
-                }
-            },
-            {
-                id: '5',
-                order_id: '#ORD-005',
-                timestamp: '2023-05-18T11:10:00Z',
-                payment: {
-                    method: 'Credit Card',
-                    amount: 19.99
-                },
-                data: {
-                    status: 'cancelled',
-                    items: ['Phone Case']
-                },
-                product: {
-                    name: 'Premium Phone Case',
-                    photo: '',
-                    store_id: 'store-2'
-                },
-                customer: {
-                    name: 'David Brown',
-                    email: 'david.brown@example.com',
-                    phone: '+1 (555) 234-5678',
-                    location: '654 Maple Ave, Seattle, WA 98101'
-                }
+        const fetchOrders = async () => {
+            try {
+                const response = await fetch('/api/orders', {
+                    method: 'GET'
+                });
+                const data = await response.json();
+                
+                // Transform the API data to match our interface
+                const transformedOrders = data.map((order: any, index: number) => ({
+                    _id: order._id,
+                    order_id: `#ORD-${order._id.toString().substring(0, 6).toUpperCase()}`,
+                    createdAt: order.createdAt,
+                    paymentMethod: order.paymentMethod,
+                    status: order.status,
+                    cartItems: order.cartItems.map((item: any) => ({
+                        product: {
+                            _id: item.productId,
+                            name: item.name,
+                            price: item.price || 0,
+                            images: item.images || []
+                        },
+                        quantity: item.quantity || 1
+                    })),
+                    shippingAddress: order.shippingAddress,
+                    userId: order.userId
+                }));
+
+                console.log({transformedOrders})
+                
+                setOrders(transformedOrders);
+            } catch (error) {
+                console.error('Error fetching orders:', error);
             }
-        ];
-        setOrders(dummyOrders);
+        };
+
+        fetchOrders();
     }, []);
 
     const filteredOrders = orders.filter(order => {
         const matchesSearch = 
             order.order_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            order.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            order.customer.email.toLowerCase().includes(searchTerm.toLowerCase());
+            order.shippingAddress.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            order.shippingAddress.email.toLowerCase().includes(searchTerm.toLowerCase());
         
-        const matchesStatus = statusFilter === 'all' || order.data.status === statusFilter;
+        const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
         
         return matchesSearch && matchesStatus;
     });
 
     const openOrderDetails = (order: Order) => {
         setSelectedOrder(order);
-        setStatusUpdate(order.data.status);
+        setStatusUpdate(order.status);
         setIsModalOpen(true);
     };
 
@@ -204,8 +123,8 @@ const OrdersManagement = () => {
         setTimeout(() => {
             setOrders(prevOrders => 
                 prevOrders.map(order => 
-                    order.id === selectedOrder.id 
-                        ? { ...order, data: { ...order.data, status: statusUpdate as OrderStatus } } 
+                    order._id === selectedOrder._id 
+                        ? { ...order, status: statusUpdate as OrderStatus } 
                         : order
                 )
             );
@@ -217,6 +136,8 @@ const OrdersManagement = () => {
 
     const getStatusColor = (status: OrderStatus) => {
         switch (status) {
+            case 'pending':
+                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
             case 'paid':
                 return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
             case 'received':
@@ -234,6 +155,8 @@ const OrdersManagement = () => {
 
     const getStatusIcon = (status: OrderStatus) => {
         switch (status) {
+            case 'pending':
+                return <FiClock className="mr-1" />;
             case 'paid':
                 return <FiClock className="mr-1" />;
             case 'received':
@@ -250,13 +173,20 @@ const OrdersManagement = () => {
     };
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat('en-NG', {
             style: 'currency',
-            currency: 'USD'
+            currency: 'NGN'
         }).format(amount);
     };
 
+    const calculateOrderTotal = (order: Order) => {
+        return order.cartItems.reduce((total, item) => {
+            return total + (item.product.price * item.quantity);
+        }, 0);
+    };
+
     const statusOptions: { value: OrderStatus; label: string }[] = [
+        { value: 'pending', label: 'Pending' },
         { value: 'paid', label: 'Paid' },
         { value: 'received', label: 'Received' },
         { value: 'shipped', label: 'Shipped' },
@@ -267,11 +197,6 @@ const OrdersManagement = () => {
     return (
         <div className="dark:bg-gray-900 min-h-screen">
             <div className="max-w-7xl mx-auto">
-                {/* <div className="mb-6 md:mb-8">
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Orders Management</h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">View and manage customer orders</p>
-                </div> */}
-
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 md:p-6 mb-6">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                         <div className="relative flex-grow max-w-md">
@@ -294,6 +219,7 @@ const OrdersManagement = () => {
                                 onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'all')}
                             >
                                 <option value="all">All Statuses</option>
+                                <option value="pending">Pending</option>
                                 <option value="paid">Paid</option>
                                 <option value="received">Received</option>
                                 <option value="shipped">Shipped</option>
@@ -332,7 +258,7 @@ const OrdersManagement = () => {
                             </thead>
                             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 {filteredOrders.map((order) => (
-                                    <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <tr key={order._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white cursor-pointer" onClick={() => openOrderDetails(order)}>
                                             {order.order_id}
                                         </td>
@@ -340,26 +266,26 @@ const OrdersManagement = () => {
                                             className="px-4 py-4 whitespace-nowrap cursor-pointer"
                                             onClick={() => openOrderDetails(order)}
                                         >
-                                            <div className="text-sm font-medium text-gray-900 dark:text-white">{order.customer.name}</div>
-                                            <div className="text-sm text-gray-500 dark:text-gray-400">{order.customer.email}</div>
+                                            <div className="text-sm font-medium text-gray-900 dark:text-white">{order.shippingAddress.fullName}</div>
+                                            <div className="text-sm text-gray-500 dark:text-gray-400">{order.shippingAddress.email}</div>
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            {new Date(order.timestamp).toLocaleDateString('en-US', {
+                                            {new Date(order.createdAt).toLocaleDateString('en-US', {
                                                 year: 'numeric',
                                                 month: 'short',
                                                 day: 'numeric'
                                             })}
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            {order.data.items.length} item{order.data.items.length !== 1 ? 's' : ''}
+                                            {order.cartItems.length} item{order.cartItems.length !== 1 ? 's' : ''}
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                            {formatCurrency(order.payment.amount)}
+                                            {formatCurrency(calculateOrderTotal(order))}
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap">
-                                            <span className={`px-3 py-1 inline-flex items-center text-xs leading-4 font-medium rounded-full ${getStatusColor(order.data.status)}`}>
-                                                {getStatusIcon(order.data.status)}
-                                                {order.data.status.charAt(0).toUpperCase() + order.data.status.slice(1)}
+                                            <span className={`px-3 py-1 inline-flex items-center text-xs leading-4 font-medium rounded-full ${getStatusColor(order.status)}`}>
+                                                {getStatusIcon(order.status)}
+                                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                                             </span>
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-2">
@@ -406,7 +332,7 @@ const OrdersManagement = () => {
                                                 Order Details: {selectedOrder.order_id}
                                             </h3>
                                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                                {new Date(selectedOrder.timestamp).toLocaleDateString('en-US', {
+                                                {new Date(selectedOrder.createdAt).toLocaleDateString('en-US', {
                                                     weekday: 'long',
                                                     year: 'numeric',
                                                     month: 'long',
@@ -431,19 +357,21 @@ const OrdersManagement = () => {
                                             <div className="space-y-3">
                                                 <div>
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
-                                                    <p className="text-sm font-medium dark:text-white">{selectedOrder.customer.name}</p>
+                                                    <p className="text-sm font-medium dark:text-white">{selectedOrder.shippingAddress.fullName}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
-                                                    <p className="text-sm font-medium dark:text-white">{selectedOrder.customer.email}</p>
+                                                    <p className="text-sm font-medium dark:text-white">{selectedOrder.shippingAddress.email}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
-                                                    <p className="text-sm font-medium dark:text-white">{selectedOrder.customer.phone}</p>
+                                                    <p className="text-sm font-medium dark:text-white">{selectedOrder.shippingAddress.phone}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">Address</p>
-                                                    <p className="text-sm font-medium dark:text-white">{selectedOrder.customer.location}</p>
+                                                    <p className="text-sm font-medium dark:text-white">
+                                                        {selectedOrder.shippingAddress.address}, {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}, {selectedOrder.shippingAddress.country}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -470,11 +398,13 @@ const OrdersManagement = () => {
                                                 </div>
                                                 <div className="flex justify-between">
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">Payment Method</p>
-                                                    <p className="text-sm font-medium dark:text-white">{selectedOrder.payment.method}</p>
+                                                    <p className="text-sm font-medium dark:text-white">
+                                                        {selectedOrder.paymentMethod.charAt(0).toUpperCase() + selectedOrder.paymentMethod.slice(1)}
+                                                    </p>
                                                 </div>
                                                 <div className="flex justify-between">
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
-                                                    <p className="text-sm font-medium dark:text-white">{formatCurrency(selectedOrder.payment.amount)}</p>
+                                                    <p className="text-sm font-medium dark:text-white">{formatCurrency(calculateOrderTotal(selectedOrder))}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -493,19 +423,19 @@ const OrdersManagement = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                                    {selectedOrder.data.items.map((item, index) => (
+                                                    {selectedOrder.cartItems.map((item, index) => (
                                                         <tr key={index}>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                                                {item}
+                                                                {item.product.name}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                                {formatCurrency(selectedOrder.payment.amount / selectedOrder.data.items.length)}
+                                                                {formatCurrency(item.product.price)}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                                1
+                                                                {item.quantity}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                                                {formatCurrency(selectedOrder.payment.amount / selectedOrder.data.items.length)}
+                                                                {formatCurrency(item.product.price * item.quantity)}
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -526,7 +456,7 @@ const OrdersManagement = () => {
                                         <Button 
                                             className="bg-blue-600 hover:bg-blue-700 text-white"
                                             onClick={() => setShowDialog(true)}
-                                            disabled={loading || !statusUpdate || statusUpdate === selectedOrder.data.status}
+                                            disabled={loading || !statusUpdate || statusUpdate === selectedOrder.status}
                                         >
                                             {loading ? "Updating..." : "Update Status"}
                                         </Button>

@@ -1,52 +1,83 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
-import { signOut } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { useEffect, useState } from "react";
+import { MessageSquare, Plus } from "lucide-react";
 
 const mockContent = [
   {
     id: 1,
     type: "image",
     url: "https://images.unsplash.com/photo-1715927928351-07a3d5b1e704",
-    likes: 243,
-    comments: 32,
+    likes: 0,
+    comments: 0,
   },
   {
     id: 2,
     type: "video",
     url: "https://example.com/video1.mp4",
-    likes: 532,
-    comments: 87,
+    likes: 0,
+    comments: 0,
   },
   {
     id: 3,
     type: "image",
     url: "https://images.unsplash.com/photo-1715937527914-0e0a1f1b1b1b",
-    likes: 187,
-    comments: 24,
+    likes: 0,
+    comments: 0,
   },
 ];
 
-export default function ProfilePage() {
+export default function UserProfilePage() {
   const { data: session, status } = useSession();
-  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: session?.user?.name || "John Doe",
+    fullName: "",
+    image: "",
     bio: "Digital creator | Photography enthusiast | Sharing my journey",
   });
+  const [isFollowing, setIsFollowing] = useState(false);
+  const path = usePathname();
+  const id = path.split('/')[2];
+  const isCurrentUser = !id || session?.user?.id === id;
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch(`/api/profile/${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch user data');
+        }
+        const data = await response.json();
+        
+        setFormData(prev => ({
+          ...prev,
+          fullName: data.data.name || prev.fullName,
+          image: data.data.image || prev.image,
+          bio: data.data.bio || prev.bio
+        }));
+      
+      } catch (error) {
+        console.error('Error fetching user info:', error);
+      }
+    };
+
+    if (id && !isCurrentUser) {
+      fetchUserInfo();
+    }
+  }, [id, isCurrentUser]);
+
   const isLoading = status === "loading";
 
   const userData = {
     username: "johndoe",
     fullName: formData.fullName,
     bio: formData.bio,
+    image: formData.image,
     followers: 0,
     following: 0,
     posts: 0,
@@ -54,46 +85,16 @@ export default function ProfilePage() {
     content: mockContent,
   };
 
-  const handleEditToggle = () => {
-    setIsEditing(!isEditing);
+  const handleFollow = () => {
+    setIsFollowing(!isFollowing);
+    // Add your follow/unfollow API call here
+    console.log(isFollowing ? "Unfollowing user" : "Following user");
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleMessage = () => {
+    // Add your messaging functionality here
+    console.log("Messaging seller");
   };
-
-  const handleSave = () => {
-    console.log("Data to be sent to backend:", {
-      name: formData.fullName,
-      bio: formData.bio,
-    });
-    
-    // Here you would typically make an API call to update the profile
-    // Example:
-    // fetch('/api/profile', {
-    //   method: 'PUT',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({
-    //     name: formData.fullName,
-    //     bio: formData.bio,
-    //   }),
-    // })
-    // .then(response => response.json())
-    // .then(data => {
-    //   console.log('Success:', data);
-    //   setIsEditing(false);
-    // })
-    
-    setIsEditing(false);
-  };
-
-  
 
   if (isLoading) {
     return (
@@ -142,42 +143,24 @@ export default function ProfilePage() {
       </div>
     );
   }
+
   return (
     <div className="relative h-screen w-full overflow-y-auto bg-gray-50">
       <section className="p-4 bg-white">
         <div className="flex items-center gap-4">
           <Avatar className="w-20 h-20 border-2 border-emerald-500">
-            <AvatarImage src={session?.user?.image || "https://github.com/shadcn.png"} />
+            <AvatarImage src={userData.image} />
             <AvatarFallback>
-              {session?.user?.name?.charAt(0) || "U"}
+              {userData.image}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            {isEditing ? (
-              <Input
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleInputChange}
-                className="text-xl font-bold mb-1"
-              />
-            ) : (
-              <h2 className="text-xl font-bold">{userData.fullName}</h2>
-            )}
+            <h2 className="text-xl font-bold">{userData.fullName}</h2>
             <p className="text-gray-600">@{userData.username}</p>
           </div>
         </div>
 
-        {isEditing ? (
-          <Textarea
-            name="bio"
-            value={formData.bio}
-            onChange={handleInputChange}
-            className="mt-3"
-            rows={3}
-          />
-        ) : (
-          <p className="mt-3 text-gray-700">{userData.bio}</p>
-        )}
+        <p className="mt-3 text-gray-700">{userData.bio}</p>
 
         <div className="flex gap-4 mt-4">
           <div className="text-center">
@@ -202,24 +185,15 @@ export default function ProfilePage() {
               </Button>
             </Link>
           ) : (
-            <Link href="/store" passHref>
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                Become a Seller
-              </Button>
-            </Link>
+            <Button 
+                variant="outline" 
+                className="border-emerald-600 text-emerald-600"
+                onClick={handleMessage}
+            >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Message
+            </Button>
           )}
-          <Button 
-            variant="outline" 
-            className="border-emerald-600 text-emerald-600"
-            onClick={isEditing ? handleSave : handleEditToggle}
-          >
-            {isEditing ? "Save Profile" : "Edit Profile"}
-          </Button>
-          {/* <Link href="/user-store" passHref>
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                Visit store
-                </Button>
-            </Link> */}
         </div>
       </section>
 

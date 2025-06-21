@@ -61,7 +61,7 @@ export default function ContentFeed({ products }: ContentFeedProps) {
         const touchY = e.touches[0].clientY;
         const deltaY = touchY - touchStartYRef.current;
 
-        if (Math.abs(deltaY) > 100) { // Increased threshold to prevent accidental scrolls
+        if (Math.abs(deltaY) > 100) {
             if (deltaY > 0) {
                 changeProductIndex(currentProductIndex - 1);
             } else {
