@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 
 interface NavItem {
     href: string
@@ -103,14 +104,20 @@ export default function DashboardSidebar({ config }: { config: SidebarConfig }) 
                 <div className="flex-1 flex flex-col overflow-y-auto p-4">
                     <div className="flex items-center justify-between mb-8">
                         {!isCollapsed && (
-                            <div className="flex items-center space-x-2">
-                                <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
-                                    <span className="text-white font-bold">G</span>
-                                </div>
+                            <Link href="/" className="flex items-center space-x-2">
+                                <div className="relative h-10 w-10">
+                                                                                                                    <Image
+                                                                                                                        src="/sprii-logo-dark.png"
+                                                                                                                        alt="Spriie Logo"
+                                                                                                                        fill
+                                                                                                                        className="object-contain"
+                                                                                                                        priority
+                                                                                                                    />
+                                                                                                               </div>
                                 <span className="font-semibold text-lg text-gray-900 dark:text-white">
                                     Spriie
                                 </span>
-                            </div>
+                            </Link>
                         )}
                         
                         <button

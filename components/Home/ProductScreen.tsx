@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import BuyDrawer from './buy-drawer';
+import CommentsDrawer from './comment-drawer';
 
 export interface Product {
     _id: string;
@@ -296,13 +297,7 @@ export default function ProductScreen({ product, isActive }: any) {
                     <span className="text-white text-xs mt-1">24.5K</span>
                 </button>
 
-                <button 
-                    className="flex flex-col items-center"
-                    aria-label="View comments"
-                >
-                    <MessageSquare size={24} color="white" fill='white' />
-                    <span className="text-white text-xs mt-1">1.2K</span>
-                </button>
+                <CommentsDrawer />
 
                 <button 
                     onClick={() => setSaved(!saved)}

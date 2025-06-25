@@ -10,6 +10,64 @@ import { options } from "../../auth/options";
 import { getServerSession } from "next-auth";
 import { Types } from "mongoose";
 
+
+export async function GET(req: NextRequest) {
+    try {
+        console.log("fireing.")
+        const session = await getServerSession(options);
+
+
+        if (!session || !session.user) {
+            return NextResponse.json(
+                { error: "Unauthorized" },
+                { status: 401 }
+            );
+        }
+
+         await connectToDatabase();
+
+        // Verify user
+        const userId = new Types.ObjectId(session.user.id);
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return NextResponse.json(
+                { error: "User not found" },
+                { status: 404 }
+            );
+        }
+        if (user.role !== "seller") {
+            return NextResponse.json(
+                { error: "Register as a seller to list products" },
+                { status: 403 }
+            );
+        }
+
+        const findStore = await Store.findOne({
+            userId 
+        }).populate('products')
+
+
+
+
+        if (!findStore) {
+            return NextResponse.json(
+                { error: "You don't currently have a store." },
+                { status: 404 }
+            )
+        }
+
+        return NextResponse.json(
+            { message: findStore.products || [] },
+            { status: 200 }
+        )   
+    } catch (error) {
+        return NextResponse.json(
+            { error: "something went wrong"},
+            { status: 500 }
+        )
+    }
+}
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();

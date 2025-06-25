@@ -9,8 +9,9 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
-type OrderStatus = 'pending' | 'paid' | 'received' | 'shipped' | 'completed' | 'cancelled';
+type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 interface Order {
     _id: string;
@@ -41,6 +42,7 @@ interface Order {
         name: string;
         email: string;
     };
+    cancellationReason?: string;
 }
 
 const OrdersManagement = () => {
@@ -52,6 +54,8 @@ const OrdersManagement = () => {
     const [showDialog, setShowDialog] = useState(false);
     const [loading, setLoading] = useState(false);
     const [statusUpdate, setStatusUpdate] = useState<OrderStatus | ''>('');
+    const [cancellationReason, setCancellationReason] = useState('');
+    const [showCancellationDialog, setShowCancellationDialog] = useState(false);
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -61,13 +65,13 @@ const OrdersManagement = () => {
                 });
                 const data = await response.json();
                 
-                // Transform the API data to match our interface
                 const transformedOrders = data.map((order: any, index: number) => ({
                     _id: order._id,
                     order_id: `#ORD-${order._id.toString().substring(0, 6).toUpperCase()}`,
                     createdAt: order.createdAt,
                     paymentMethod: order.paymentMethod,
                     status: order.status,
+                    cancellationReason: order.cancellationReason || '',
                     cartItems: order.cartItems.map((item: any) => ({
                         product: {
                             _id: item.productId,
@@ -113,38 +117,74 @@ const OrdersManagement = () => {
         setIsModalOpen(false);
         setSelectedOrder(null);
         setStatusUpdate('');
+        setCancellationReason('');
     };
 
-    const handleStatusUpdate = () => {
+    const handleStatusUpdate = async () => {
         if (!selectedOrder || !statusUpdate) return;
         
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        
+        try {
+            const updateData: any = {
+                status: statusUpdate
+            };
+
+            if (statusUpdate === 'cancelled' && cancellationReason) {
+                updateData.cancellationReason = cancellationReason;
+            }
+
+            const response = await fetch(`/api/orders/${selectedOrder._id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update order status');
+            }
+
             setOrders(prevOrders => 
                 prevOrders.map(order => 
                     order._id === selectedOrder._id 
-                        ? { ...order, status: statusUpdate as OrderStatus } 
+                        ? { 
+                            ...order, 
+                            status: statusUpdate as OrderStatus,
+                            cancellationReason: statusUpdate === 'cancelled' ? cancellationReason : order.cancellationReason
+                        } 
                         : order
                 )
             );
+        } catch (error) {
+            console.error('Error updating order status:', error);
+        } finally {
             setLoading(false);
             setShowDialog(false);
+            setShowCancellationDialog(false);
             setIsModalOpen(false);
-        }, 1500);
+        }
+    };
+
+    const handleStatusChange = (newStatus: OrderStatus) => {
+        setStatusUpdate(newStatus);
+        if (newStatus === 'cancelled') {
+            setShowCancellationDialog(true);
+        } else {
+            setShowDialog(true);
+        }
     };
 
     const getStatusColor = (status: OrderStatus) => {
         switch (status) {
             case 'pending':
                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-            case 'paid':
+            case 'processing':
                 return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-            case 'received':
-                return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
             case 'shipped':
                 return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-            case 'completed':
+            case 'delivered':
                 return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
             case 'cancelled':
                 return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
@@ -157,13 +197,11 @@ const OrdersManagement = () => {
         switch (status) {
             case 'pending':
                 return <FiClock className="mr-1" />;
-            case 'paid':
+            case 'processing':
                 return <FiClock className="mr-1" />;
-            case 'received':
-                return <FiPackage className="mr-1" />;
             case 'shipped':
                 return <FiTruck className="mr-1" />;
-            case 'completed':
+            case 'delivered':
                 return <FiCheckCircle className="mr-1" />;
             case 'cancelled':
                 return <FiX className="mr-1" />;
@@ -187,10 +225,9 @@ const OrdersManagement = () => {
 
     const statusOptions: { value: OrderStatus; label: string }[] = [
         { value: 'pending', label: 'Pending' },
-        { value: 'paid', label: 'Paid' },
-        { value: 'received', label: 'Received' },
+        { value: 'processing', label: 'Processing' },
         { value: 'shipped', label: 'Shipped' },
-        { value: 'completed', label: 'Completed' },
+        { value: 'delivered', label: 'Delivered' },
         { value: 'cancelled', label: 'Cancelled' },
     ];
 
@@ -220,10 +257,9 @@ const OrdersManagement = () => {
                             >
                                 <option value="all">All Statuses</option>
                                 <option value="pending">Pending</option>
-                                <option value="paid">Paid</option>
-                                <option value="received">Received</option>
+                                <option value="processing">Processing</option>
                                 <option value="shipped">Shipped</option>
-                                <option value="completed">Completed</option>
+                                <option value="delivered">delivered</option>
                                 <option value="cancelled">Cancelled</option>
                             </select>
                         </div>
@@ -396,6 +432,14 @@ const OrdersManagement = () => {
                                                         ))}
                                                     </select>
                                                 </div>
+                                                {selectedOrder.status === 'cancelled' && selectedOrder.cancellationReason && (
+                                                    <div>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400">Cancellation Reason</p>
+                                                        <p className="text-sm font-medium dark:text-white mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                                                            {selectedOrder.cancellationReason}
+                                                        </p>
+                                                    </div>
+                                                )}
                                                 <div className="flex justify-between">
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">Payment Method</p>
                                                     <p className="text-sm font-medium dark:text-white">
@@ -455,7 +499,7 @@ const OrdersManagement = () => {
                                     <div className="space-x-2">
                                         <Button 
                                             className="bg-blue-600 hover:bg-blue-700 text-white"
-                                            onClick={() => setShowDialog(true)}
+                                            onClick={() => handleStatusChange(statusUpdate as OrderStatus)}
                                             disabled={loading || !statusUpdate || statusUpdate === selectedOrder.status}
                                         >
                                             {loading ? "Updating..." : "Update Status"}
@@ -516,6 +560,55 @@ const OrdersManagement = () => {
                                 disabled={loading}
                             >
                                 {loading ? "Processing..." : "Confirm Update"}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={showCancellationDialog} onOpenChange={setShowCancellationDialog}>
+                    <DialogContent
+                        className="sm:max-w-[425px] w-[85%] rounded-xl text-black dark:text-white bg-white dark:bg-gray-800 transition-opacity duration-300"
+                        style={{
+                            opacity: showCancellationDialog ? 1 : 0,
+                            transition: "opacity 300ms",
+                            transform: showCancellationDialog ? "translateY(0)" : "translateY(-20px)"
+                        }}
+                    >
+                        <DialogHeader>
+                            <DialogTitle>Cancel Order</DialogTitle>
+                            <DialogDescription className="dark:text-gray-400">
+                                Please provide a reason for cancellation
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="mt-4">
+                            <Textarea
+                                placeholder="Enter cancellation reason..."
+                                value={cancellationReason}
+                                onChange={(e) => setCancellationReason(e.target.value)}
+                                className="min-h-[100px]"
+                            />
+                        </div>
+                        <div className="flex justify-end space-x-2 mt-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShowCancellationDialog(false);
+                                    setStatusUpdate(selectedOrder?.status || '');
+                                }}
+                                disabled={loading}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                onClick={() => {
+                                    if (cancellationReason.trim()) {
+                                        handleStatusUpdate();
+                                    }
+                                }}
+                                disabled={loading || !cancellationReason.trim()}
+                            >
+                                {loading ? "Processing..." : "Confirm Cancellation"}
                             </Button>
                         </div>
                     </DialogContent>

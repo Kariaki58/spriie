@@ -1,4 +1,5 @@
 import Product from "@/models/product";
+import Tags from "@/models/tags";
 import connectToDatabase from "@/lib/mongoose";
 import { NextResponse, NextRequest } from "next/server";
 
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest, { params }: {
 
         console.log(product);
         return NextResponse.json({
-            message: product.basePrice
+            message: product
         }, { status: 200 })
     } catch (error) {
         return NextResponse.json({

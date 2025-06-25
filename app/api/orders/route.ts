@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(options);
 
+    console.log('fire line 17')
+
 
 
     if (!session || !session.user) {
@@ -59,8 +61,10 @@ export async function GET(req: NextRequest) {
     const orders = await Order.find({ storeId: store._id })
     .populate('userId')
     .populate('cartItems.productId');
+    console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+    console.log({orders})
+    console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
 
-    console.log(orders)
 
 
     return NextResponse.json(orders);

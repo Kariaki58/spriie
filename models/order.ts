@@ -27,10 +27,14 @@ const OrderSchema = new mongoose.Schema(
             required: true,
             ref: "User",
         },
+
         storeId: {
             type: mongoose.Types.ObjectId,
             required: true,
             ref: "Store",
+        },
+        cancellationReason: {
+            type: String,
         },
         cartItems: {
             type: [
@@ -48,11 +52,11 @@ const OrderSchema = new mongoose.Schema(
         status: {
             type: String,
             required: true,
-            enum: ["pending", "processing", "completed", "cancelled"],
+            enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
             default: "pending",
         },
         shippingAddress: {
-            type: Schema.Types.Mixed, // Allows storing any structured object
+            type: Schema.Types.Mixed,
             required: true,
         },
         paymentMethod: {

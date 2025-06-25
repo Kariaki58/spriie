@@ -15,6 +15,8 @@ export interface IProduct extends Document {
   images: string[];
   showPrice: boolean;
   hasVariants: boolean;
+  likes: Types.ObjectId[];
+  comments: Types.ObjectId[]; 
   attributes: {
     name: string;
     values: { value: string; label: string }[];
@@ -95,6 +97,8 @@ const ProductSchema = new Schema<IProduct>(
       type: Boolean,
       default: false,
     },
+    likes: [{ type: Schema.Types.ObjectId, ref: "Like" }],
+    comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],
     attributes: [
       {
         name: { type: String, required: true },

@@ -16,5 +16,5 @@ const TagsSchema = new mongoose.Schema({
 });
 
 
-const Tags = mongoose.models.Tags || mongoose.model<Tags>("Tags", TagsSchema);
+const Tags = mongoose.models.Tag || mongoose.model<Tags>("Tag", TagsSchema);
 export default Tags;
