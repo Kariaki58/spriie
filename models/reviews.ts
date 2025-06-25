@@ -7,6 +7,7 @@ export interface IReviews extends Document {
     videoId: mongoose.Types.ObjectId;
     rating: number;
     name: string;
+    likes: mongoose.Types.ObjectId[];
     comment: string;
     email: string;
     reviewImage: string;
@@ -50,6 +51,7 @@ const ReviewsSchema = new mongoose.Schema({
     email: {
         type: String,
     },
+    likes: [{ type: mongoose.Types.ObjectId, ref: 'User' }],
     reviewImage: {
         type: String,
     },

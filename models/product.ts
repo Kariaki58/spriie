@@ -15,7 +15,7 @@ export interface IProduct extends Document {
   images: string[];
   showPrice: boolean;
   hasVariants: boolean;
-  likes: Types.ObjectId[];
+  likes: number;
   comments: Types.ObjectId[]; 
   attributes: {
     name: string;
@@ -25,6 +25,7 @@ export interface IProduct extends Document {
   reviews: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
+  likedBy: Types.ObjectId[];
 }
 
 const ProductSchema = new Schema<IProduct>(
@@ -97,7 +98,16 @@ const ProductSchema = new Schema<IProduct>(
       type: Boolean,
       default: false,
     },
-    likes: [{ type: Schema.Types.ObjectId, ref: "Like" }],
+    likes: {
+      type: Number,
+      default: 0
+    },
+    likedBy: [{
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: [],
+    }],
+
     comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],
     attributes: [
       {

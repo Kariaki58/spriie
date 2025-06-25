@@ -6,6 +6,7 @@ import Category from "@/models/category";
 import Tag from "@/models/tags";
 import User from "@/models/user";
 import Store from "@/models/store";
+import Comment from "@/models/comments";
 import { options } from "../../auth/options";
 import { getServerSession } from "next-auth";
 import { Types } from "mongoose";
@@ -46,9 +47,7 @@ export async function GET(req: NextRequest) {
         const findStore = await Store.findOne({
             userId 
         }).populate('products')
-
-
-
+        .populate('comments')
 
         if (!findStore) {
             return NextResponse.json(

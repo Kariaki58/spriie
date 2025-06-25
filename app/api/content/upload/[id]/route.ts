@@ -77,6 +77,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         const product = await Product.findById(id)
         .populate('category')
         .populate('tags')
+        .populate('comments')
+        .populate('likes')
 
         console.log({product})
 

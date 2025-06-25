@@ -8,9 +8,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import Image from 'next/image';
 import BuyDrawer from './buy-drawer';
 import CommentsDrawer from './comment-drawer';
+import LikeButton from './LikeButton';
 
 export interface Product {
     _id: string;
@@ -21,6 +21,8 @@ export interface Product {
     video: string;
     images: string[];
     thumbnail: string;
+    like: number;
+    likedBy: string[];
     userId: string;
 }
 
@@ -157,6 +159,10 @@ export default function ProductScreen({ product, isActive }: any) {
         setShowFullDescription(!showFullDescription);
     };
 
+    const initiallyLiked = session?.user?.id
+    ? product.likedBy.map((id: string) => id).includes(session.user.id)
+    : false;
+
     return (
         <div className="h-[100vh] w-full max-w-md mx-auto bg-black relative overflow-hidden snap-start">
             <div 
@@ -283,19 +289,12 @@ export default function ProductScreen({ product, isActive }: any) {
                     </div>
                     <span className="text-white text-xs mt-1">@{product.userId._id.slice(-4)}</span>
                 </div>
+                <LikeButton
+                    productId={product._id}
+                    initialLikes={product.likes}
+                    initiallyLiked={initiallyLiked}
+                />
 
-                <button 
-                    onClick={() => setLiked(!liked)}
-                    className="flex flex-col items-center"
-                    aria-label={liked ? "Unlike" : "Like"}
-                >
-                    <Heart 
-                        size={24} 
-                        fill={liked ? 'red' : 'white'} 
-                        color={liked ? 'red' : 'white'} 
-                    />
-                    <span className="text-white text-xs mt-1">24.5K</span>
-                </button>
 
                 <CommentsDrawer />
 
