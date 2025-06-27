@@ -34,6 +34,21 @@ export interface BuyDrawerProps {
     qty: number;
 }
 
+
+function HeartAnimation({ onAnimationEnd }: { onAnimationEnd: () => void }) {
+    return (
+        <div 
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            onAnimationEnd={onAnimationEnd}
+        >
+            <div className="heart-animation">
+                <Heart size={80} fill="red" color="red" />
+            </div>
+        </div>
+    );
+}
+
+
 export default function ProductScreen({ product, isActive }: any) {
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [liked, setLiked] = useState(false);
@@ -47,6 +62,10 @@ export default function ProductScreen({ product, isActive }: any) {
     const [scrollLeft, setScrollLeft] = useState(0);
     const [showFullDescription, setShowFullDescription] = useState(false);
     const [qty, setQty] = useState(1);
+    const [showHeart, setShowHeart] = useState(false);
+    const [lastTap, setLastTap] = useState(0);
+    const mediaContainerRef = useRef<HTMLDivElement>(null);
+    const lastTapRef = useRef(0);
 
     const { data: session } = useSession();
 
@@ -93,6 +112,52 @@ export default function ProductScreen({ product, isActive }: any) {
             const newIndex = Math.round(scrollPosition / itemWidth);
             setCurrentMediaIndex(newIndex);
         }
+    };
+
+    const handleLike = () => {
+        // Find the like button in the DOM and click it
+        const likeButton = document.querySelector('.like-button') as HTMLElement;
+        if (likeButton) {
+            likeButton.click();
+        }
+    };
+
+
+    const handleAnimationEnd = () => {
+        setShowHeart(false);
+    };
+
+    const showHeartAnimation = () => {
+        setShowHeart(true);
+    }
+
+    const handleTap = (e: React.TouchEvent | React.MouseEvent) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapRef.current;
+        
+        if (tapLength < 300 && tapLength > 0) {
+            // Double tap detected
+            e.preventDefault();
+            handleLike();
+            showHeartAnimation();
+        }
+        lastTapRef.current = currentTime;
+    };
+
+
+    const handleDoubleTap = (e: React.TouchEvent | React.MouseEvent) => {
+        e.preventDefault();
+
+        console.log("touching....")
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        
+        if (tapLength < 300 && tapLength > 0) {
+            // Double tap detected
+            handleLike();
+            showHeartAnimation();
+        }
+        setLastTap(currentTime);
     };
 
     const startDrag = (e: React.MouseEvent | React.TouchEvent) => {
@@ -170,10 +235,14 @@ export default function ProductScreen({ product, isActive }: any) {
                 className="relative h-full w-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
                 onMouseDown={startDrag}
                 onTouchStart={startDrag}
+                onDoubleClick={handleTap}
+                onClick={handleTap}
             >
+                {showHeart && <HeartAnimation onAnimationEnd={handleAnimationEnd} />}
+
                 {mediaItems.map((media, index) => (
                     <div 
-                        key={media._id} 
+                        key={index} 
                         className="flex-shrink-0 w-full h-full snap-center relative group"
                         onMouseEnter={() => media.type === 'video' && setShowPlayButton(true)}
                         onMouseLeave={() => media.type === 'video' && setShowPlayButton(false)}
@@ -293,6 +362,7 @@ export default function ProductScreen({ product, isActive }: any) {
                     productId={product._id}
                     initialLikes={product.likes}
                     initiallyLiked={initiallyLiked}
+                    className="like-button"
                 />
 
 

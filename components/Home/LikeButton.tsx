@@ -84,7 +84,7 @@ export default function LikeButton({
   return (
     <button 
       onClick={handleToggleLike}
-      className="flex flex-col items-center"
+      className="flex flex-col like-button items-center"
       aria-label={liked ? "Unlike" : "Like"}
       disabled={loading || !session?.user?.id}
     >

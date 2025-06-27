@@ -246,3 +246,32 @@ body {
     height: 4px;
   }
 }
+
+.heart-animation {
+    animation: heartBeat 1s ease-out;
+    transform: scale(0);
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+@keyframes heartBeat {
+    0% {
+        transform: scale(0);
+        opacity: 0.8;
+    }
+    15% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    30% {
+        transform: scale(0.95);
+    }
+    45%, 80% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
