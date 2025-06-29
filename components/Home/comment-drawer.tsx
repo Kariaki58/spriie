@@ -52,7 +52,7 @@ interface CommentsDrawerProps {
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
-  const data = await response.json(); // Always parse JSON first
+  const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error || 'Network response was not ok');
   }
@@ -62,6 +62,7 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
 export default function CommentsDrawer({ productId, commentCount }: CommentsDrawerProps) {
   const [activeTab, setActiveTab] = useState("comments");
   const [commentInput, setCommentInput] = useState("");
+  const [replyInput, setReplyInput] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [showFullDescription, setShowFullDescription] = useState<Record<string, boolean>>({});
   const { data: session } = useSession();
@@ -93,7 +94,11 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
     },
     onSuccess: (newComment) => {
       queryClient.invalidateQueries({ queryKey: ["comments", productId] });
-      setCommentInput("");
+      if (replyingTo) {
+        setReplyInput("");
+      } else {
+        setCommentInput("");
+      }
       setReplyingTo(null);
       toast.success("Comment added successfully");
     },
@@ -144,7 +149,20 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
   };
 
   const handleReply = (commentId: string) => {
-    setReplyingTo(prev => prev === commentId ? null : commentId);
+    setReplyingTo(prev => {
+      if (prev === commentId) {
+        setReplyInput("");
+        return null;
+      }
+      setReplyInput("");
+      return commentId;
+    });
+  };
+
+  const handleReplySubmit = (e: React.FormEvent, commentId: string) => {
+    e.preventDefault();
+    if (!replyInput.trim()) return;
+    addCommentMutation.mutate(replyInput);
   };
 
   const handleDeleteComment = (commentId: string) => {
@@ -165,7 +183,7 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
-  // Mock reviews data - replace with your actual reviews API when ready
+  // Mock reviews data
   const reviews: Review[] = [
     {
       _id: "r1",
@@ -289,20 +307,20 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                           {/* Reply form */}
                           {replyingTo === comment._id && (
                             <form 
-                              onSubmit={handleCommentSubmit}
+                              onSubmit={(e) => handleReplySubmit(e, comment._id)}
                               className="mt-3"
                             >
                               <div className="flex gap-2">
                                 <Textarea
                                   placeholder={`Replying to ${comment.user.name}...`}
-                                  value={commentInput}
-                                  onChange={(e) => setCommentInput(e.target.value)}
+                                  value={replyInput}
+                                  onChange={(e) => setReplyInput(e.target.value)}
                                   className="flex-1 min-h-[40px] text-sm"
                                 />
                                 <Button
                                   type="submit"
                                   size="sm"
-                                  disabled={!commentInput.trim() || addCommentMutation.isPending}
+                                  disabled={!replyInput.trim() || addCommentMutation.isPending}
                                 >
                                   <Send className="w-4 h-4" />
                                 </Button>
@@ -370,7 +388,7 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                     </Avatar>
                     <div className="flex-1 flex gap-2">
                       <Textarea
-                        placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
+                        placeholder="Add a comment..."
                         value={commentInput}
                         onChange={(e) => setCommentInput(e.target.value)}
                         className="flex-1 min-h-[40px]"
