@@ -1,3 +1,4 @@
+import NavigationBar from "@/components/app-ui/Navigation";
 import HomeLeftBar from "@/components/Home/home-left-bar";
 import ProductFetch from "@/components/Home/product-fetch";
 
@@ -8,11 +9,13 @@ export default function HomePage() {
       <HomeLeftBar />
       
       <ProductFetch />
-      <div className="hidden lg:flex lg:w-80 xl:w-96 bg-white border-l">
+      <NavigationBar />
+      
+      {/* <div className="hidden lg:flex lg:w-80 xl:w-96 bg-white border-l">
         <div className="p-4">
           <h3 className="font-semibold">Comments</h3>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
