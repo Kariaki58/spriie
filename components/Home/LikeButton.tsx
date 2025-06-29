@@ -46,6 +46,7 @@ export default function LikeButton({
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
     return count.toString();
   };
+  
 
   const handleToggleLike = async () => {
     if (loading || !session?.user?.id) return;

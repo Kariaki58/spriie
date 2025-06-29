@@ -147,17 +147,18 @@ export default function ProductScreen({ product, isActive }: any) {
 
     const handleDoubleTap = (e: React.TouchEvent | React.MouseEvent) => {
         e.preventDefault();
-
-        console.log("touching....")
+        e.stopPropagation();
+        
         const currentTime = new Date().getTime();
-        const tapLength = currentTime - lastTap;
+        const tapLength = currentTime - lastTapRef.current;
         
         if (tapLength < 300 && tapLength > 0) {
-            // Double tap detected
             handleLike();
             showHeartAnimation();
+            lastTapRef.current = 0; // Reset after successful double-tap
+        } else {
+            lastTapRef.current = currentTime;
         }
-        setLastTap(currentTime);
     };
 
     const startDrag = (e: React.MouseEvent | React.TouchEvent) => {
@@ -235,7 +236,6 @@ export default function ProductScreen({ product, isActive }: any) {
                 className="relative h-full w-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
                 onMouseDown={startDrag}
                 onTouchStart={startDrag}
-                onDoubleClick={handleTap}
                 onClick={handleTap}
             >
                 {showHeart && <HeartAnimation onAnimationEnd={handleAnimationEnd} />}
@@ -247,6 +247,8 @@ export default function ProductScreen({ product, isActive }: any) {
                         onMouseEnter={() => media.type === 'video' && setShowPlayButton(true)}
                         onMouseLeave={() => media.type === 'video' && setShowPlayButton(false)}
                         onTouchStart={() => media.type === 'video' && setShowPlayButton(true)}
+                        onDoubleClick={handleDoubleTap}
+                        onTouchEnd={handleDoubleTap}
                     >
                         {media.type === 'video' ? (
                             <>
@@ -258,7 +260,10 @@ export default function ProductScreen({ product, isActive }: any) {
                                     muted
                                     playsInline
                                     poster={product.thumbnail}
-                                    onClick={togglePlayPause}
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Prevent double-tap from triggering
+                                        togglePlayPause();
+                                    }}
                                 />
                                 <button
                                     onClick={(e) => {
@@ -366,7 +371,7 @@ export default function ProductScreen({ product, isActive }: any) {
                 />
 
 
-                <CommentsDrawer />
+                <CommentsDrawer productId={product._id} commentCount={50}/>
 
                 <button 
                     onClick={() => setSaved(!saved)}

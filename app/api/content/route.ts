@@ -12,9 +12,7 @@ export async function GET(req: NextRequest) {
         .sort({ createdAt: -1 })
         .populate('userId');
 
-
         console.log(product)
-
         return NextResponse.json({
             message: product
         }, { status: 200 })

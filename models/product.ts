@@ -107,8 +107,6 @@ const ProductSchema = new Schema<IProduct>(
       ref: "User",
       default: [],
     }],
-
-    comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],
     attributes: [
       {
         name: { type: String, required: true },

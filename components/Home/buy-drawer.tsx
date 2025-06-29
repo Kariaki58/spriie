@@ -223,7 +223,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                                 className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                             />
                             <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-900 dark:text-white truncate">{product.name}</p>
+                                <p className="font-semibold text-gray-900 dark:text-gray-900 truncate">{product.title}</p>
                                 <div className="flex items-center mt-1">
                                     <span className="text-lg font-bold text-emerald-600">₦{formatNumberWithCommas(product.basePrice)}</span>
                                     {product.discount > 0 && (

@@ -21,7 +21,7 @@ const CommentSchema = new Schema<IComment>(
     },
     product: { 
       type: Schema.Types.ObjectId, 
-      ref: "Product", 
+      ref: "Product",
       required: true 
     },
     content: { 
