@@ -371,7 +371,7 @@ export default function ProductScreen({ product, isActive }: any) {
                 />
 
 
-                <CommentsDrawer productId={product._id} commentCount={50}/>
+                {/* <CommentsDrawer productId={product._id} commentCount={50}/> */}
 
                 <button 
                     onClick={() => setSaved(!saved)}

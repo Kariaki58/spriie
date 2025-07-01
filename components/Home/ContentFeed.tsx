@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import ProductScreen from './ProductScreen';
 import { Heart } from 'lucide-react';
+import TopNavigation from '../app-ui/top-navigation';
 
 export interface Product {
     _id: string;
@@ -102,6 +103,7 @@ export default function ContentFeed({ products }: ContentFeedProps) {
             ref={containerRef}
             className="flex-1 relative overflow-hidden snap-y snap-mandatory touch-none"
         >
+            <TopNavigation />
             {showHeart && (
                 <div 
                     className="absolute z-50 text-red-500 animate-ping"

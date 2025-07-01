@@ -19,6 +19,10 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    console.log(productId)
+
+    const comment = await Comment.find({ product: productId})
     
 
     const comments = await Comment.find({ product: productId, parentComment: { $exists: false } })
@@ -34,6 +38,8 @@ export async function GET(req: NextRequest) {
         }
       })
       .sort({ createdAt: -1 });
+
+    console.log({comments})
 
     return NextResponse.json(comments, { status: 200 });
   } catch (error) {

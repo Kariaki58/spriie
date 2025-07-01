@@ -23,7 +23,7 @@ export default function HomeLeftBar() {
     const [isMobile, setIsMobile] = useState(false);
     const [showSearchInput, setShowSearchInput] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
-
+    
     const menuItems = [
         { icon: <Home className="w-5 h-5" />, name: "For You" },
         { icon: <Search className="w-5 h-5" />, name: "Search" },

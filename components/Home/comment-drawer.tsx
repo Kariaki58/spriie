@@ -265,7 +265,7 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                     <div key={comment._id} className="border-b border-gray-200 dark:border-gray-700 pb-4">
                       <div className="flex gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={comment.user.image} />
+                          {/* <AvatarImage src={comment.user.avatar} /> */}
                           <AvatarFallback>{comment.user.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
@@ -312,7 +312,7 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                             >
                               <div className="flex gap-2">
                                 <Textarea
-                                  placeholder={`Replying to ${comment.user.name}...`}
+                                  placeholder={`Replying to ${comment.userId.name}...`}
                                   value={replyInput}
                                   onChange={(e) => setReplyInput(e.target.value)}
                                   className="flex-1 min-h-[40px] text-sm"
