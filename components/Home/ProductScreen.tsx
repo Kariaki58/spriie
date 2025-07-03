@@ -55,9 +55,9 @@ export default function ProductScreen({ product, isActive }: any) {
     const [showPlayButton, setShowPlayButton] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [startX, setStartX] = useState(0);
-    const [scrollLeft, setScrollLeft] = useState(0);
+    // const [isDragging, setIsDragging] = useState(false);
+    // const [startX, setStartX] = useState(0);
+    // const [scrollLeft, setScrollLeft] = useState(0);
     const [showFullDescription, setShowFullDescription] = useState(false);
     const [qty, setQty] = useState(1);
     const [showHeart, setShowHeart] = useState(false);
@@ -221,21 +221,21 @@ export default function ProductScreen({ product, isActive }: any) {
     };
 
     // Enhanced touch handlers for mobile swiping
-    const handleTouchStart = (e: React.TouchEvent) => {
-        touchStartX.current = e.touches[0].clientX;
-        touchStartY.current = e.touches[0].clientY;
-        touchEndX.current = e.touches[0].clientX;
-        setIsSwiping(true);
-        setAutoSlide(false);
+    // const handleTouchStart = (e: React.TouchEvent) => {
+    //     touchStartX.current = e.touches[0].clientX;
+    //     touchStartY.current = e.touches[0].clientY;
+    //     touchEndX.current = e.touches[0].clientX;
+    //     setIsSwiping(true);
+    //     setAutoSlide(false);
         
         // Mouse drag fallback
-        const clientX = e.touches[0].clientX;
-        setIsDragging(true);
-        setStartX(clientX);
-        if (scrollContainerRef.current) {
-            setScrollLeft(scrollContainerRef.current.scrollLeft);
-        }
-    };
+        // const clientX = e.touches[0].clientX;
+        // setIsDragging(true);
+        // setStartX(clientX);
+        // if (scrollContainerRef.current) {
+        //     setScrollLeft(scrollContainerRef.current.scrollLeft);
+        // }
+    // };
 
     const handleTouchMove = (e: React.TouchEvent) => {
         if (!isSwiping) return;
@@ -250,13 +250,13 @@ export default function ProductScreen({ product, isActive }: any) {
         }
         
         // Mouse drag fallback
-        if (isDragging) {
-            const clientX = e.touches[0].clientX;
-            const walk = (clientX - startX) * 2;
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollLeft = scrollLeft - walk;
-            }
-        }
+        // if (isDragging) {
+        //     const clientX = e.touches[0].clientX;
+        //     const walk = (clientX - startX) * 2;
+        //     if (scrollContainerRef.current) {
+        //         scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+        //     }
+        // }
     };
 
     const handleTouchEnd = () => {
@@ -278,34 +278,34 @@ export default function ProductScreen({ product, isActive }: any) {
         }
         
         setIsSwiping(false);
-        setIsDragging(false);
+        // setIsDragging(false);
         setAutoSlide(true);
     };
 
-    const startDrag = (e: React.MouseEvent) => {
-        const clientX = e.clientX;
-        setIsDragging(true);
-        setStartX(clientX);
-        if (scrollContainerRef.current) {
-            setScrollLeft(scrollContainerRef.current.scrollLeft);
-        }
-        setAutoSlide(false);
-    };
+    // const startDrag = (e: React.MouseEvent) => {
+    //     const clientX = e.clientX;
+    //     setIsDragging(true);
+    //     setStartX(clientX);
+    //     if (scrollContainerRef.current) {
+    //         setScrollLeft(scrollContainerRef.current.scrollLeft);
+    //     }
+    //     setAutoSlide(false);
+    // };
 
-    const duringDrag = (e: React.MouseEvent) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        const clientX = e.clientX;
-        const walk = (clientX - startX) * 2;
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollLeft = scrollLeft - walk;
-        }
-    };
+    // const duringDrag = (e: React.MouseEvent) => {
+    //     if (!isDragging) return;
+    //     e.preventDefault();
+    //     const clientX = e.clientX;
+    //     const walk = (clientX - startX) * 2;
+    //     if (scrollContainerRef.current) {
+    //         scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+    //     }
+    // };
 
-    const endDrag = () => {
-        setIsDragging(false);
-        setAutoSlide(true);
-    };
+    // const endDrag = () => {
+    //     setIsDragging(false);
+    //     setAutoSlide(true);
+    // };
 
     const goToSlide = (index: number) => {
         setCurrentMediaIndex(index);
@@ -328,17 +328,12 @@ export default function ProductScreen({ product, isActive }: any) {
         if (!container) return;
 
         container.addEventListener('scroll', handleScroll);
-        container.addEventListener('mouseup', endDrag);
-        container.addEventListener('mousemove', duringDrag as any);
-        container.addEventListener('mouseleave', endDrag);
 
         return () => {
             container.removeEventListener('scroll', handleScroll);
-            container.removeEventListener('mouseup', endDrag);
-            container.removeEventListener('mousemove', duringDrag as any);
-            container.removeEventListener('mouseleave', endDrag);
         };
-    }, [isDragging, startX, scrollLeft]);
+    }, []);
+
 
     function formatNumberWithCommas(number: number) {
         return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -357,8 +352,9 @@ export default function ProductScreen({ product, isActive }: any) {
             <div 
                 ref={scrollContainerRef}
                 className="relative h-full w-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-                onMouseDown={startDrag}
-                onTouchStart={handleTouchStart}
+                // onMouseDown={startDrag}
+                // onTouchStart={handleTouchStart}
+                onScroll={handleScroll}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
             >
