@@ -94,34 +94,45 @@ export default function ProductScreen({ product, isActive }: any) {
         const video = videoRef.current;
         if (!video) return;
 
-        if (video.paused) {
-            video.play()
+        if (video.paused || video.ended) {
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+            playPromise
                 .then(() => setIsPlaying(true))
-                .catch((e) => {
-                    console.log("Play failed:", e);
-                    setIsPlaying(false);
+                .catch((err) => {
+                console.log("Play failed:", err);
                 });
+            }
         } else {
             video.pause();
             setIsPlaying(false);
         }
-    };
+        };
+
 
 
 
     useEffect(() => {
-        if (!videoRef.current) return;
-        
+        const video = videoRef.current;
+        if (!video) return;
+
         if (isActive && currentMediaIndex === 0) {
-            videoRef.current.play()
+            video.muted = true;
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+            playPromise
                 .then(() => setIsPlaying(true))
-                .catch(e => console.log("Autoplay prevented:", e));
-            setShowPlayButton(false);
+                .catch((err) => {
+                console.log("Autoplay blocked on mobile:", err);
+                setIsPlaying(false);
+                });
+            }
         } else {
-            videoRef.current.pause();
+            video.pause();
             setIsPlaying(false);
         }
     }, [isActive, currentMediaIndex]);
+
 
     const handleScroll = () => {
         if (scrollContainerRef.current) {
@@ -265,8 +276,8 @@ export default function ProductScreen({ product, isActive }: any) {
                         className="flex-shrink-0 w-full h-full snap-center relative group"
                         onMouseEnter={() => media.type === 'video' && setShowPlayButton(true)}
                         onMouseLeave={() => media.type === 'video' && setShowPlayButton(false)}
-                        onTouchStart={() => media.type === 'video' && setShowPlayButton(true)}
-                        onDoubleClick={handleDoubleTap}
+                        // onTouchStart={() => media.type === 'video' && setShowPlayButton(true)}
+                        // onDoubleClick={handleDoubleTap}
                         onTouchEnd={handleDoubleTap}
                     >
                         {media.type === 'video' ? (
@@ -281,11 +292,13 @@ export default function ProductScreen({ product, isActive }: any) {
                                     poster={product.thumbnail}
                                     onPlay={() => setIsPlaying(true)}
                                     onPause={() => setIsPlaying(false)}
-                                    onClick={(e) => {
+                                    onTouchEnd={(e) => {
                                         e.stopPropagation();
                                         togglePlayPause();
                                     }}
-                                    />
+                                />
+
+
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
