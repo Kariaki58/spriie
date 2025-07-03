@@ -179,7 +179,7 @@ export default function UserProfilePage() {
 
         <div className="mt-4 flex gap-2">
           {userData.isSeller ? (
-            <Link href="/dashboard/vendor" passHref>
+            <Link href="/vendor" passHref>
               <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
                 Seller Dashboard
               </Button>

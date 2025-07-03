@@ -12,7 +12,7 @@ export async function middleware(req: NextRequest) {
   if (token && pathname.startsWith('/auth')) {
     // Redirect sellers to vendor dashboard
     if (token.role === 'seller') {
-      return NextResponse.redirect(new URL('/dashboard/vendor', req.url));
+      return NextResponse.redirect(new URL('/vendor', req.url));
     }
     // Redirect other users to home page
     return NextResponse.redirect(new URL('/', req.url));
@@ -32,7 +32,7 @@ export async function middleware(req: NextRequest) {
 
   // Handle seller redirection for account selection
   if (token.role === 'seller' && pathname === '/select-account') {
-    return NextResponse.redirect(new URL('/dashboard/vendor', req.url));
+    return NextResponse.redirect(new URL('/vendor', req.url));
   }
 
   // Allow access for other cases

@@ -6,51 +6,85 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import NavigationBar from "@/components/app-ui/Navigation";
 
-const mockContent = [
-  {
-    id: 1,
-    type: "image",
-    url: "https://images.unsplash.com/photo-1715927928351-07a3d5b1e704",
-    likes: 243,
-    comments: 32,
-  },
-  {
-    id: 2,
-    type: "video",
-    url: "https://example.com/video1.mp4",
-    likes: 532,
-    comments: 87,
-  },
-  {
-    id: 3,
-    type: "image",
-    url: "https://images.unsplash.com/photo-1715937527914-0e0a1f1b1b1b",
-    likes: 187,
-    comments: 24,
-  },
-];
+interface ContentItem {
+  _id: string;
+  type: "image" | "video";
+  thumbnail: string;
+  video?: string;
+  likes: number;
+  comments: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface UserData {
+  username: string;
+  fullName: string | null | undefined;
+  bio: string;
+  followers: number;
+  following: number;
+  posts: number;
+  isSeller: boolean;
+  content: ContentItem[];
+}
+
+interface FormData {
+  fullName: string | null | undefined;
+  bio: string;
+}
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: session?.user?.name || "John Doe",
+  const [mockContent, setMockContent] = useState<ContentItem[]>([]);
+  const [formData, setFormData] = useState<FormData>({
+    fullName: session?.user?.name,
     bio: "Digital creator | Photography enthusiast | Sharing my journey",
   });
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const response = await fetch('/api/content', {
+          method: 'GET'
+        });
+        const data = await response.json();
+        
+        // Transform the API data to match our ContentItem interface
+        const transformedData = data.message.map((item: any) => ({
+          _id: item._id.toString(),
+          type: item.video ? "video" : "image",
+          thumbnail: item.thumbnail,
+          video: item.video,
+          likes: item.likes || 0,
+          comments: item.reviews?.length || 0,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt
+        }));
+        
+        setMockContent(transformedData);
+      } catch (error) {
+        console.error("Failed to fetch content:", error);
+      }
+    };
+
+    fetchContent();
+  }, []);
+
   const isLoading = status === "loading";
 
-  const userData = {
-    username: "johndoe",
+  const userData: UserData = {
+    username: session?.user?.email?.split('@')[0] || "user",
     fullName: formData.fullName,
     bio: formData.bio,
     followers: 0,
     following: 0,
-    posts: 0,
+    posts: mockContent.length,
     isSeller: session?.user?.role === "seller" || false,
     content: mockContent,
   };
@@ -72,29 +106,8 @@ export default function ProfilePage() {
       name: formData.fullName,
       bio: formData.bio,
     });
-    
-    // Here you would typically make an API call to update the profile
-    // Example:
-    // fetch('/api/profile', {
-    //   method: 'PUT',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({
-    //     name: formData.fullName,
-    //     bio: formData.bio,
-    //   }),
-    // })
-    // .then(response => response.json())
-    // .then(data => {
-    //   console.log('Success:', data);
-    //   setIsEditing(false);
-    // })
-    
     setIsEditing(false);
   };
-
-  
 
   if (isLoading) {
     return (
@@ -143,6 +156,7 @@ export default function ProfilePage() {
       </div>
     );
   }
+
   return (
     <div className="relative h-screen w-full overflow-y-auto bg-gray-50">
       <section className="p-4 bg-white">
@@ -157,12 +171,12 @@ export default function ProfilePage() {
             {isEditing ? (
               <Input
                 name="fullName"
-                value={formData.fullName}
+                value={formData.fullName || ""}
                 onChange={handleInputChange}
                 className="text-xl font-bold mb-1"
               />
             ) : (
-              <h2 className="text-xl font-bold">{userData.fullName}</h2>
+              <h2 className="text-xl font-bold text-gray-600">{userData.fullName}</h2>
             )}
             <p className="text-gray-600">@{userData.username}</p>
           </div>
@@ -182,55 +196,50 @@ export default function ProfilePage() {
 
         <div className="flex gap-4 mt-4">
           <div className="text-center">
-            <p className="font-bold">{userData.posts}</p>
+            <p className="font-bold text-gray-600">{userData.posts}</p>
             <p className="text-sm text-gray-600">Posts</p>
           </div>
           <div className="text-center">
-            <p className="font-bold">{userData.followers}</p>
+            <p className="font-bold text-gray-600">{userData.followers}</p>
             <p className="text-sm text-gray-600">Followers</p>
           </div>
           <div className="text-center">
-            <p className="font-bold">{userData.following}</p>
+            <p className="font-bold text-gray-600">{userData.following}</p>
             <p className="text-sm text-gray-600">Following</p>
           </div>
         </div>
 
         <div className="mt-4 flex gap-2">
           {userData.isSeller ? (
-            <Link href="/dashboard/vendor" passHref>
+            <Link href="/vendor" passHref>
               <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
                 Seller Dashboard
               </Button>
             </Link>
           ) : (
             <Link href="/store" passHref>
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                 Become a Seller
               </Button>
             </Link>
           )}
           <Button 
             variant="outline" 
-            className="border-emerald-600 text-emerald-600"
+            className="border-emerald-600 text-emerald-800"
             onClick={isEditing ? handleSave : handleEditToggle}
           >
             {isEditing ? "Save Profile" : "Edit Profile"}
           </Button>
-          {/* <Link href="/user-store" passHref>
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                Visit store
-                </Button>
-            </Link> */}
         </div>
       </section>
 
       <section className="mt-4 p-2 pb-16">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
           {userData.content.map((item) => (
-            <Card key={item.id} className="aspect-square overflow-hidden group relative">
+            <Card key={item._id} className="aspect-square overflow-hidden group relative p-0">
               {item.type === "image" ? (
                 <img
-                  src={item.url}
+                  src={item.thumbnail}
                   alt="Post"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
@@ -238,7 +247,7 @@ export default function ProfilePage() {
                 <div className="relative w-full h-full">
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors duration-300" />
                   <video
-                    src={item.url}
+                    src={item.video}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
