@@ -59,11 +59,13 @@ export default function TopNavigation() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Searching for:", searchValue); // ✅ Use input value here
-    // You could also trigger an API call or route change here
-    // closeAll(); // ✅ Close the search after submitting
+    console.log("Searching for:", searchValue);
   };
 
+  // New handler to prevent closing when clicking inside search form
+  const handleSearchFormClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
 
   return (
     <>
@@ -72,6 +74,7 @@ export default function TopNavigation() {
           showMenu ? "translate-x-0" : "-translate-x-full"
         }`}
       >
+        {/* Menu content remains the same */}
         <div className="p-6 h-full flex flex-col">
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-200 to-white">
@@ -119,7 +122,7 @@ export default function TopNavigation() {
 
       {(showMenu || showSearch) && (
         <div
-          className="fixed inset-0 z-40 animate-fadeIn"
+          className="fixed inset-0 z-10 animate-fadeIn"
           onClick={closeAll}
         />
       )}
@@ -127,8 +130,7 @@ export default function TopNavigation() {
       {/* Top Navigation */}
       <nav className={`fixed sm:hidden top-0 left-0 right-0 z-30 transition-all duration-300 ${scrolled ? 'py-2 bg-emerald-800/90 backdrop-blur-md shadow-md' : 'py-4 bg-transparent'}`}>
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between relative"> {/* Added relative positioning */}
-            {/* Left side - Menu button (same as before) */}
+          <div className="flex items-center justify-between relative">
             <button
               onClick={handleMenuClick}
               className={`p-2 rounded-full transition-all ${showSearch ? 'opacity-0 scale-90' : 'opacity-100 scale-100'} hover:bg-emerald-700/50`}
@@ -136,29 +138,33 @@ export default function TopNavigation() {
               <AlignLeft className="text-white w-6 h-6" />
             </button>
 
-            {/* Center - Search input when active */}
-            <div className="absolute left-1/2 transform -translate-x-1/2"> {/* Centered absolutely */}
+            <div className="absolute left-1/2 transform -translate-x-1/2">
               {showSearch ? (
-                <form onSubmit={handleSubmit} className="flex items-center w-[90vw] max-w-lg bg-white/10 backdrop-blur-sm rounded-full px-3 py-2 border border-emerald-400/30 transition-all duration-300 animate-fadeIn">
+                <form 
+                  onSubmit={handleSubmit} 
+                  onClick={handleSearchFormClick} // Add this handler
+                  className="z-50 flex items-center w-[90vw] max-w-lg bg-white/10 backdrop-blur-sm rounded-full px-3 py-2 border border-emerald-400/30 transition-all duration-300 animate-fadeIn relative"
+                >
                   <Search className="text-emerald-200 mr-1 w-5 h-5" />
                   <input
                     type="text"
                     placeholder="Search anything..."
                     value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)} // ✅ Update state on input
+                    onChange={(e) => setSearchValue(e.target.value)}
                     className="flex-1 bg-transparent text-white placeholder-emerald-200/70 outline-none text-lg"
                     autoFocus
+                    onClick={(e) => e.stopPropagation()} // Also prevent propagation on input click
                   />
-                  <button 
+                  {/* <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       closeAll();
                     }}
-                    type="button" // ✅ Make this button type="button" to prevent form submit
+                    type="button"
                     className="ml-1 p-1 rounded-full hover:bg-emerald-700/50 transition-colors"
                   >
                     <X className="text-emerald-200 w-5 h-5" />
-                  </button>
+                  </button> */}
                 </form>
               ) : (
                 <div className={`transition-opacity ${showSearch ? 'opacity-0' : 'opacity-100'}`}>
@@ -169,7 +175,6 @@ export default function TopNavigation() {
               )}
             </div>
 
-            {/* Right side - Search button (same as before) */}
             <button
               onClick={handleSearchClick}
               className={`p-2 rounded-full transition-all ${showSearch ? 'opacity-0 scale-90' : 'opacity-100 scale-100'} hover:bg-emerald-700/50`}
