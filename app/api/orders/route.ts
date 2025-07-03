@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
     if (session.user.role !== "seller") {
       return NextResponse.json(
-        { error: "you are not a seller" },
+        { erro: "you are not a seller" },
         { status: 400 }
       )
     }
@@ -61,6 +61,9 @@ export async function GET(req: NextRequest) {
     const orders = await Order.find({ storeId: store._id })
     .populate('userId')
     .populate('cartItems.productId');
+    console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+    console.log({orders})
+    console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
 
 
 

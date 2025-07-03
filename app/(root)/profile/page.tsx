@@ -50,7 +50,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await fetch('/api/content', {
+        const response = await fetch('/api/content/profile', {
           method: 'GET'
         });
         const data = await response.json();
