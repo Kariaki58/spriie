@@ -63,7 +63,7 @@ export default function ProductScreen({ product, isActive }: any) {
     const [showHeart, setShowHeart] = useState(false);
     const [isVideoReady, setIsVideoReady] = useState(false);
     const mediaContainerRef = useRef<HTMLDivElement>(null);
-    const lastTapRef = useRef(0);
+    const doubleTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const { data: session } = useSession();
 
@@ -123,7 +123,7 @@ export default function ProductScreen({ product, isActive }: any) {
 
         const handleCanPlay = () => {
             setIsVideoReady(true);
-            tryAutoplay(); // ✅ autoplay when ready
+            tryAutoplay();
         };
 
         const handleError = () => {
@@ -135,15 +135,16 @@ export default function ProductScreen({ product, isActive }: any) {
         video.addEventListener('error', handleError);
         video.preload = "metadata";
 
-        // ✅ Also try to autoplay immediately
         tryAutoplay();
 
         return () => {
             video.removeEventListener('canplay', handleCanPlay);
             video.removeEventListener('error', handleError);
+            if (doubleTapTimeoutRef.current) {
+                clearTimeout(doubleTapTimeoutRef.current);
+            }
         };
     }, [isActive, currentMediaIndex]);
-
 
     const handleScroll = () => {
         if (scrollContainerRef.current) {
@@ -172,42 +173,30 @@ export default function ProductScreen({ product, isActive }: any) {
 
     const handleVideoTouch = (e: React.TouchEvent) => {
         e.stopPropagation();
-        const now = Date.now();
         
-        if (lastTapRef.current && now - lastTapRef.current < 300) {
-            togglePlayPause();
+        if (doubleTapTimeoutRef.current) {
+            clearTimeout(doubleTapTimeoutRef.current);
+            doubleTapTimeoutRef.current = null;
             return;
         }
-        
-        lastTapRef.current = now;
+
+        doubleTapTimeoutRef.current = setTimeout(() => {
+            doubleTapTimeoutRef.current = null;
+            togglePlayPause();
+        }, 300);
     };
 
-    const handleTap = (e: React.TouchEvent | React.MouseEvent) => {
-        const currentTime = new Date().getTime();
-        const tapLength = currentTime - lastTapRef.current;
-        
-        if (tapLength < 300 && tapLength > 0) {
-            e.preventDefault();
-            handleLike();
-            showHeartAnimation();
-        }
-        lastTapRef.current = currentTime;
-    };
-
-    const handleDoubleTap = (e: React.TouchEvent | React.MouseEvent) => {
+    const handleDoubleTap = (e: React.TouchEvent) => {
         e.preventDefault();
         e.stopPropagation();
         
-        const currentTime = new Date().getTime();
-        const tapLength = currentTime - lastTapRef.current;
-        
-        if (tapLength < 300 && tapLength > 0) {
-            handleLike();
-            showHeartAnimation();
-            lastTapRef.current = 0;
-        } else {
-            lastTapRef.current = currentTime;
+        if (doubleTapTimeoutRef.current) {
+            clearTimeout(doubleTapTimeoutRef.current);
+            doubleTapTimeoutRef.current = null;
         }
+        
+        handleLike();
+        showHeartAnimation();
     };
 
     const startDrag = (e: React.MouseEvent | React.TouchEvent) => {
@@ -284,7 +273,6 @@ export default function ProductScreen({ product, isActive }: any) {
                 className="relative h-full w-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
                 onMouseDown={startDrag}
                 onTouchStart={startDrag}
-                onClick={handleTap}
             >
                 {showHeart && <HeartAnimation onAnimationEnd={handleAnimationEnd} />}
 
@@ -296,7 +284,6 @@ export default function ProductScreen({ product, isActive }: any) {
                         onMouseLeave={() => media.type === 'video' && setShowPlayButton(false)}
                         onTouchStart={() => media.type === 'video' && setShowPlayButton(true)}
                         onDoubleClick={handleDoubleTap}
-                        onTouchEnd={handleDoubleTap}
                     >
                         {media.type === 'video' ? (
                             <>
@@ -314,11 +301,17 @@ export default function ProductScreen({ product, isActive }: any) {
                                         togglePlayPause();
                                     }}
                                     autoPlay
-                                    onTouchStart={handleVideoTouch}
+                                    onTouchStart={(e) => {
+                                        e.stopPropagation();
+                                        if (index === 0) {
+                                            handleVideoTouch(e);
+                                        }
+                                    }}
                                     onTouchEnd={(e) => {
                                         e.stopPropagation();
-                                        handleVideoTouch(e);
+                                        e.preventDefault();
                                     }}
+                                    onDoubleClick={handleDoubleTap}
                                 />
                                 {(showPlayButton || !isPlaying) && (
                                     <button
@@ -374,9 +367,9 @@ export default function ProductScreen({ product, isActive }: any) {
                     <div className="flex items-center mb-2">
                         <span className="font-bold text-3xl">₦{formatNumberWithCommas(product.basePrice)}</span>
                         {product.discount > 0 && (
-                        <span className="ml-2 text-sm line-through text-gray-300">
-                            ₦{formatNumberWithCommas(Number((product.basePrice / (1 - product.discount / 100)).toFixed(0)))}
-                        </span>
+                            <span className="ml-2 text-sm line-through text-gray-300">
+                                ₦{formatNumberWithCommas(Number((product.basePrice / (1 - product.discount / 100)).toFixed(0)))}
+                            </span>
                         )}
                     </div>
                     <h3 className="font-bold text-lg truncate">{product.name}</h3>
