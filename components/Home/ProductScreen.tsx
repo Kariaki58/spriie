@@ -62,8 +62,9 @@ export default function ProductScreen({ product, isActive }: any) {
     const [qty, setQty] = useState(1);
     const [showHeart, setShowHeart] = useState(false);
     const [isVideoReady, setIsVideoReady] = useState(false);
-    const mediaContainerRef = useRef<HTMLDivElement>(null);
     const doubleTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const sliderIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const [autoSlide, setAutoSlide] = useState(false);
 
     const { data: session } = useSession();
 
@@ -99,6 +100,20 @@ export default function ProductScreen({ product, isActive }: any) {
         }
     };
 
+    // Slider auto-advance functionality
+    useEffect(() => {
+        if (autoSlide && mediaItems.length > 1) {
+            sliderIntervalRef.current = setInterval(() => {
+                setCurrentMediaIndex(prev => (prev + 1) % mediaItems.length);
+            }, 5000);
+        }
+        return () => {
+            if (sliderIntervalRef.current) {
+                clearInterval(sliderIntervalRef.current);
+            }
+        };
+    }, [autoSlide, mediaItems.length]);
+
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
@@ -106,7 +121,6 @@ export default function ProductScreen({ product, isActive }: any) {
         const tryAutoplay = () => {
             if (isActive && currentMediaIndex === 0) {
                 video.muted = true;
-
                 const playPromise = video.play();
                 if (playPromise !== undefined) {
                     playPromise
@@ -220,6 +234,12 @@ export default function ProductScreen({ product, isActive }: any) {
 
     const endDrag = () => {
         setIsDragging(false);
+        setAutoSlide(true);
+    };
+
+    const goToSlide = (index: number) => {
+        setCurrentMediaIndex(index);
+        setAutoSlide(true);
     };
 
     useEffect(() => {
@@ -349,11 +369,12 @@ export default function ProductScreen({ product, isActive }: any) {
                 ))}
             </div>
 
+            {/* Slider Indicators */}
             <div className="absolute bottom-20 left-0 right-0 flex justify-center gap-2 z-10">
                 {mediaItems.map((_, idx) => (
                     <button
                         key={idx}
-                        onClick={() => setCurrentMediaIndex(idx)}
+                        onClick={() => goToSlide(idx)}
                         className={`h-1.5 rounded-full transition-all duration-300 ${
                             idx === currentMediaIndex ? 'w-4 bg-white' : 'w-2 bg-gray-500 hover:bg-gray-400'
                         }`}
@@ -362,14 +383,15 @@ export default function ProductScreen({ product, isActive }: any) {
                 ))}
             </div>
 
+            {/* Product Info */}
             <div className="absolute bottom-23 left-0 right-0 p-4 z-10 w-[80%]">
                 <div className="text-white">
                     <div className="flex items-center mb-2">
                         <span className="font-bold text-3xl">₦{formatNumberWithCommas(product.basePrice)}</span>
                         {product.discount > 0 && (
-                            <span className="ml-2 text-sm line-through text-gray-300">
-                                ₦{formatNumberWithCommas(Number((product.basePrice / (1 - product.discount / 100)).toFixed(0)))}
-                            </span>
+                        <span className="ml-2 text-sm line-through text-gray-300">
+                            ₦{formatNumberWithCommas(Number((product.basePrice / (1 - product.discount / 100)).toFixed(0)))}
+                        </span>
                         )}
                     </div>
                     <h3 className="font-bold text-lg truncate">{product.name}</h3>
@@ -397,6 +419,7 @@ export default function ProductScreen({ product, isActive }: any) {
                 </div>
             </div>
 
+            {/* Side Action Buttons */}
             <div className="absolute right-4 bottom-24 flex flex-col items-center space-y-4 z-10">
                 <div className="flex flex-col items-center">
                     <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
