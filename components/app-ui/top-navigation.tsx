@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { 
     Home, 
     Search,
@@ -15,12 +16,14 @@ import {
     X,
     ChevronRight
 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function TopNavigation() {
   const [showSearch, setShowSearch] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const { data: session } = useSession();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -31,14 +34,18 @@ export default function TopNavigation() {
   }, []);
 
   const menuItems = [
-    { icon: <Home className="w-5 h-5" />, name: "For You" },
-    { icon: <Compass className="w-5 h-5" />, name: "Explore" },
-    { icon: <Heart className="w-5 h-5" />, name: "Following" },
-    { icon: <Users className="w-5 h-5" />, name: "Friends" },
-    { icon: <LayoutDashboard className="w-5 h-5" />, name: "Dashboard" },
-    { icon: <ShoppingCart className="w-5 h-5" />, name: "Cart" },
-    { icon: <MessageSquare className="w-5 h-5" />, name: "Chat" },
-    { icon: <User className="w-5 h-5" />, name: "Profile" },
+    { icon: <Home className="w-5 h-5" />, name: "For You", href: "/" },
+    { icon: <Compass className="w-5 h-5" />, name: "Explore", href: "/explore" },
+    { icon: <Heart className="w-5 h-5" />, name: "Following", href: "/following" },
+    { icon: <Users className="w-5 h-5" />, name: "Friends", href: "/friends" },
+    { 
+      icon: <LayoutDashboard className="w-5 h-5" />, 
+      name: "Dashboard", 
+      href: session?.user?.role === "seller" ? "/vendor" : "/user" 
+    },
+    { icon: <ShoppingCart className="w-5 h-5" />, name: "Cart", href: "/cart" },
+    { icon: <MessageSquare className="w-5 h-5" />, name: "Chat", href: "/chat" },
+    { icon: <User className="w-5 h-5" />, name: "Profile", href: "/profile" },
   ];
 
   const handleSearchClick = () => {
@@ -62,7 +69,6 @@ export default function TopNavigation() {
     console.log("Searching for:", searchValue);
   };
 
-  // New handler to prevent closing when clicking inside search form
   const handleSearchFormClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
@@ -74,7 +80,6 @@ export default function TopNavigation() {
           showMenu ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Menu content remains the same */}
         <div className="p-6 h-full flex flex-col">
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-200 to-white">
@@ -92,21 +97,24 @@ export default function TopNavigation() {
             <ul className="space-y-3">
               {menuItems.map((item) => (
                 <li key={item.name}>
-                  <button
+                  <Link
+                    href={item.href}
                     className={`
                       w-full flex items-center px-4 py-2 rounded-xl transition-all
                       hover:bg-emerald-600/50 hover:shadow-md
                       active:scale-95 group
                       ${showMenu ? "opacity-100" : "opacity-0"}
+                      block
                     `}
                     style={{ transitionDelay: showMenu ? `${menuItems.indexOf(item) * 50}ms` : '0ms' }}
+                    onClick={closeAll}
                   >
                     <span className="mr-4 group-hover:scale-110 transition-transform">
                       {item.icon}
                     </span>
                     <span className="text-sm font-medium">{item.name}</span>
                     <ChevronRight className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5" />
-                  </button>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -142,7 +150,7 @@ export default function TopNavigation() {
               {showSearch ? (
                 <form 
                   onSubmit={handleSubmit} 
-                  onClick={handleSearchFormClick} // Add this handler
+                  onClick={handleSearchFormClick}
                   className="z-50 flex items-center w-[90vw] max-w-lg bg-white/10 backdrop-blur-sm rounded-full px-3 py-2 border border-emerald-400/30 transition-all duration-300 animate-fadeIn relative"
                 >
                   <Search className="text-emerald-200 mr-1 w-5 h-5" />
@@ -153,18 +161,8 @@ export default function TopNavigation() {
                     onChange={(e) => setSearchValue(e.target.value)}
                     className="flex-1 bg-transparent text-white placeholder-emerald-200/70 outline-none text-lg"
                     autoFocus
-                    onClick={(e) => e.stopPropagation()} // Also prevent propagation on input click
+                    onClick={(e) => e.stopPropagation()}
                   />
-                  {/* <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeAll();
-                    }}
-                    type="button"
-                    className="ml-1 p-1 rounded-full hover:bg-emerald-700/50 transition-colors"
-                  >
-                    <X className="text-emerald-200 w-5 h-5" />
-                  </button> */}
                 </form>
               ) : (
                 <div className={`transition-opacity ${showSearch ? 'opacity-0' : 'opacity-100'}`}>
