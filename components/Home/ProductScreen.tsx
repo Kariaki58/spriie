@@ -34,6 +34,7 @@ export interface BuyDrawerProps {
     qty: number;
 }
 
+
 function HeartAnimation({ onAnimationEnd }: { onAnimationEnd: () => void }) {
     return (
         <div 
@@ -47,6 +48,7 @@ function HeartAnimation({ onAnimationEnd }: { onAnimationEnd: () => void }) {
     );
 }
 
+
 export default function ProductScreen({ product, isActive }: any) {
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [liked, setLiked] = useState(false);
@@ -55,116 +57,51 @@ export default function ProductScreen({ product, isActive }: any) {
     const [showPlayButton, setShowPlayButton] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    // const [isDragging, setIsDragging] = useState(false);
-    // const [startX, setStartX] = useState(0);
-    // const [scrollLeft, setScrollLeft] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
     const [showFullDescription, setShowFullDescription] = useState(false);
     const [qty, setQty] = useState(1);
     const [showHeart, setShowHeart] = useState(false);
-    const [isVideoReady, setIsVideoReady] = useState(false);
-    const doubleTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const sliderIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const [autoSlide, setAutoSlide] = useState(false);
-
-    // Touch handling refs
-    const touchStartX = useRef(0);
-    const touchStartY = useRef(0);
-    const touchEndX = useRef(0);
-    const [isSwiping, setIsSwiping] = useState(false);
-    const SWIPE_THRESHOLD = 50;
+    const [lastTap, setLastTap] = useState(0);
+    const mediaContainerRef = useRef<HTMLDivElement>(null);
+    const lastTapRef = useRef(0);
 
     const { data: session } = useSession();
 
+
+    console.log(session);
+    
     const mediaItems = [
         { type: 'video', url: product.video },
         ...product.images.map((img: string) => ({ type: 'image', url: img }))
     ];
 
     const togglePlayPause = () => {
+        if (videoRef.current) {
+            if (videoRef.current.paused) {
+                videoRef.current.play()
+                .then(() => setIsPlaying(true))
+                .catch(e => console.log("Play failed:", e));
+            } else {
+                videoRef.current.pause();
+                setIsPlaying(false);
+            }
+        }
+    };
+
+    useEffect(() => {
         if (!videoRef.current) return;
         
-        if (videoRef.current.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) {
-            return;
-        }
-
-        if (videoRef.current.paused) {
-            const playPromise = videoRef.current.play();
-            
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        setIsPlaying(true);
-                    })
-                    .catch(error => {
-                        console.log("Playback failed:", error);
-                        videoRef.current?.load();
-                        setIsPlaying(false);
-                    });
-            }
+        if (isActive && currentMediaIndex === 0) {
+            videoRef.current.play()
+                .then(() => setIsPlaying(true))
+                .catch(e => console.log("Autoplay prevented:", e));
+            setShowPlayButton(false);
         } else {
             videoRef.current.pause();
             setIsPlaying(false);
         }
-    };
-
-    // Slider auto-advance functionality
-    useEffect(() => {
-        if (autoSlide && mediaItems.length > 1) {
-            sliderIntervalRef.current = setInterval(() => {
-                setCurrentMediaIndex(prev => (prev + 1) % mediaItems.length);
-            }, 5000);
-        }
-        return () => {
-            if (sliderIntervalRef.current) {
-                clearInterval(sliderIntervalRef.current);
-            }
-        };
-    }, [autoSlide, mediaItems.length]);
-
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!video) return;
-
-        const tryAutoplay = () => {
-            if (isActive && currentMediaIndex === 0) {
-                video.muted = true;
-                const playPromise = video.play();
-                if (playPromise !== undefined) {
-                    playPromise
-                    .then(() => {
-                        setIsPlaying(true);
-                    })
-                    .catch((e) => {
-                        console.log("Autoplay prevented:", e);
-                        setIsPlaying(false);
-                    });
-                }
-            }
-        };
-
-        const handleCanPlay = () => {
-            setIsVideoReady(true);
-            tryAutoplay();
-        };
-
-        const handleError = () => {
-            console.error("Video error:", video.error);
-            setIsVideoReady(false);
-        };
-
-        video.addEventListener('canplay', handleCanPlay);
-        video.addEventListener('error', handleError);
-        video.preload = "metadata";
-
-        tryAutoplay();
-
-        return () => {
-            video.removeEventListener('canplay', handleCanPlay);
-            video.removeEventListener('error', handleError);
-            if (doubleTapTimeoutRef.current) {
-                clearTimeout(doubleTapTimeoutRef.current);
-            }
-        };
     }, [isActive, currentMediaIndex]);
 
     const handleScroll = () => {
@@ -178,11 +115,13 @@ export default function ProductScreen({ product, isActive }: any) {
     };
 
     const handleLike = () => {
+        // Find the like button in the DOM and click it
         const likeButton = document.querySelector('.like-button') as HTMLElement;
         if (likeButton) {
             likeButton.click();
         }
     };
+
 
     const handleAnimationEnd = () => {
         setShowHeart(false);
@@ -192,124 +131,57 @@ export default function ProductScreen({ product, isActive }: any) {
         setShowHeart(true);
     }
 
-    const handleVideoTouch = (e: React.TouchEvent) => {
-        e.stopPropagation();
+    const handleTap = (e: React.TouchEvent | React.MouseEvent) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapRef.current;
         
-        if (doubleTapTimeoutRef.current) {
-            clearTimeout(doubleTapTimeoutRef.current);
-            doubleTapTimeoutRef.current = null;
-            return;
+        if (tapLength < 300 && tapLength > 0) {
+            // Double tap detected
+            e.preventDefault();
+            handleLike();
+            showHeartAnimation();
         }
-
-        doubleTapTimeoutRef.current = setTimeout(() => {
-            doubleTapTimeoutRef.current = null;
-            togglePlayPause();
-        }, 300);
+        lastTapRef.current = currentTime;
     };
 
-    const handleDoubleTap = (e: React.TouchEvent) => {
+
+    const handleDoubleTap = (e: React.TouchEvent | React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         
-        if (doubleTapTimeoutRef.current) {
-            clearTimeout(doubleTapTimeoutRef.current);
-            doubleTapTimeoutRef.current = null;
-        }
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapRef.current;
         
-        handleLike();
-        showHeartAnimation();
+        if (tapLength < 300 && tapLength > 0) {
+            handleLike();
+            showHeartAnimation();
+            lastTapRef.current = 0; // Reset after successful double-tap
+        } else {
+            lastTapRef.current = currentTime;
+        }
     };
 
-    // Enhanced touch handlers for mobile swiping
-    // const handleTouchStart = (e: React.TouchEvent) => {
-    //     touchStartX.current = e.touches[0].clientX;
-    //     touchStartY.current = e.touches[0].clientY;
-    //     touchEndX.current = e.touches[0].clientX;
-    //     setIsSwiping(true);
-    //     setAutoSlide(false);
-        
-        // Mouse drag fallback
-        // const clientX = e.touches[0].clientX;
-        // setIsDragging(true);
-        // setStartX(clientX);
-        // if (scrollContainerRef.current) {
-        //     setScrollLeft(scrollContainerRef.current.scrollLeft);
-        // }
-    // };
-
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isSwiping) return;
-        touchEndX.current = e.touches[0].clientX;
-        
-        // Prevent scrolling when swiping horizontally
-        const xDiff = Math.abs(touchStartX.current - touchEndX.current);
-        const yDiff = Math.abs(e.touches[0].clientY - touchStartY.current);
-        
-        if (xDiff > yDiff && xDiff > 5) {
-            e.preventDefault();
+    const startDrag = (e: React.MouseEvent | React.TouchEvent) => {
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        setIsDragging(true);
+        setStartX(clientX);
+        if (scrollContainerRef.current) {
+            setScrollLeft(scrollContainerRef.current.scrollLeft);
         }
-        
-        // Mouse drag fallback
-        // if (isDragging) {
-        //     const clientX = e.touches[0].clientX;
-        //     const walk = (clientX - startX) * 2;
-        //     if (scrollContainerRef.current) {
-        //         scrollContainerRef.current.scrollLeft = scrollLeft - walk;
-        //     }
-        // }
     };
 
-    const handleTouchEnd = () => {
-        if (!isSwiping) return;
-        
-        const difference = touchStartX.current - touchEndX.current;
-        
-        // Swipe left (next slide)
-        if (difference > SWIPE_THRESHOLD) {
-            setCurrentMediaIndex(prev => 
-                prev === mediaItems.length - 1 ? 0 : prev + 1
-            );
-        } 
-        // Swipe right (previous slide)
-        else if (difference < -SWIPE_THRESHOLD) {
-            setCurrentMediaIndex(prev => 
-                prev === 0 ? mediaItems.length - 1 : prev - 1
-            );
+    const duringDrag = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const walk = (clientX - startX) * 2;
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft = scrollLeft - walk;
         }
-        
-        setIsSwiping(false);
-        // setIsDragging(false);
-        setAutoSlide(true);
     };
 
-    // const startDrag = (e: React.MouseEvent) => {
-    //     const clientX = e.clientX;
-    //     setIsDragging(true);
-    //     setStartX(clientX);
-    //     if (scrollContainerRef.current) {
-    //         setScrollLeft(scrollContainerRef.current.scrollLeft);
-    //     }
-    //     setAutoSlide(false);
-    // };
-
-    // const duringDrag = (e: React.MouseEvent) => {
-    //     if (!isDragging) return;
-    //     e.preventDefault();
-    //     const clientX = e.clientX;
-    //     const walk = (clientX - startX) * 2;
-    //     if (scrollContainerRef.current) {
-    //         scrollContainerRef.current.scrollLeft = scrollLeft - walk;
-    //     }
-    // };
-
-    // const endDrag = () => {
-    //     setIsDragging(false);
-    //     setAutoSlide(true);
-    // };
-
-    const goToSlide = (index: number) => {
-        setCurrentMediaIndex(index);
-        setAutoSlide(true);
+    const endDrag = () => {
+        setIsDragging(false);
     };
 
     useEffect(() => {
@@ -328,16 +200,26 @@ export default function ProductScreen({ product, isActive }: any) {
         if (!container) return;
 
         container.addEventListener('scroll', handleScroll);
+        container.addEventListener('mouseup', endDrag);
+        container.addEventListener('mousemove', duringDrag as any);
+        container.addEventListener('mouseleave', endDrag);
+        container.addEventListener('touchend', endDrag);
+        container.addEventListener('touchmove', duringDrag as any);
 
         return () => {
             container.removeEventListener('scroll', handleScroll);
+            container.removeEventListener('mouseup', endDrag);
+            container.removeEventListener('mousemove', duringDrag as any);
+            container.removeEventListener('mouseleave', endDrag);
+            container.removeEventListener('touchend', endDrag);
+            container.removeEventListener('touchmove', duringDrag as any);
         };
-    }, []);
-
+    }, [isDragging, startX, scrollLeft]);
 
     function formatNumberWithCommas(number: number) {
         return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
+
 
     const toggleDescription = () => {
         setShowFullDescription(!showFullDescription);
@@ -348,84 +230,63 @@ export default function ProductScreen({ product, isActive }: any) {
     : false;
 
     return (
-        <div className="h-[100vh] w-full max-w-md mx-auto bg-black relative overflow-hidden snap-start touch-none">
+        <div className="h-[100vh] w-full max-w-md mx-auto bg-black relative overflow-hidden snap-start">
             <div 
                 ref={scrollContainerRef}
                 className="relative h-full w-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-                // onMouseDown={startDrag}
-                // onTouchStart={handleTouchStart}
-                onScroll={handleScroll}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
+                onMouseDown={startDrag}
+                onTouchStart={startDrag}
+                onClick={handleTap}
             >
                 {showHeart && <HeartAnimation onAnimationEnd={handleAnimationEnd} />}
 
                 {mediaItems.map((media, index) => (
                     <div 
                         key={index} 
-                        className="flex-shrink-0 w-full h-full snap-center relative group touch-none"
+                        className="flex-shrink-0 w-full h-full snap-center relative group"
                         onMouseEnter={() => media.type === 'video' && setShowPlayButton(true)}
                         onMouseLeave={() => media.type === 'video' && setShowPlayButton(false)}
                         onTouchStart={() => media.type === 'video' && setShowPlayButton(true)}
                         onDoubleClick={handleDoubleTap}
+                        onTouchEnd={handleDoubleTap}
                     >
                         {media.type === 'video' ? (
                             <>
                                 <video
                                     ref={index === 0 ? videoRef : null}
                                     src={media.url}
-                                    className="h-full w-full object-cover touch-none"
+                                    className="h-full w-full object-cover"
                                     loop
                                     muted
                                     playsInline
-                                    preload="metadata"
                                     poster={product.thumbnail}
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Prevent double-tap from triggering
+                                        togglePlayPause();
+                                    }}
+                                />
+                                <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         togglePlayPause();
                                     }}
-                                    autoPlay
-                                    onTouchStart={(e) => {
-                                        e.stopPropagation();
-                                        if (index === 0) {
-                                            handleVideoTouch(e);
-                                        }
-                                    }}
-                                    onTouchEnd={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                    }}
-                                    onDoubleClick={handleDoubleTap}
-                                />
-                                {(showPlayButton || !isPlaying) && (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            togglePlayPause();
-                                        }}
-                                        onTouchEnd={(e) => {
-                                            e.stopPropagation();
-                                            togglePlayPause();
-                                        }}
-                                        className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-3 bg-black/50 rounded-full transition-opacity duration-300 ${
-                                            showPlayButton || !isPlaying ? 'opacity-100' : 'opacity-0'
-                                        } group-hover:opacity-100`}
-                                        aria-label={isPlaying ? "Pause video" : "Play video"}
-                                        disabled={!isVideoReady}
-                                    >
-                                        {isPlaying ? (
-                                            <Pause size={32} color="white" fill="white" />
-                                        ) : (
-                                            <Play size={32} color="white" fill="white" />
-                                        )}
-                                    </button>
-                                )}
+                                    className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-3 bg-black/50 rounded-full transition-opacity duration-300 ${
+                                        showPlayButton ? 'opacity-100' : 'opacity-0'
+                                    } group-hover:opacity-100`}
+                                    aria-label={isPlaying ? "Pause video" : "Play video"}
+                                >
+                                    {isPlaying ? (
+                                        <Pause size={32} color="white" fill="white" />
+                                    ) : (
+                                        <Play size={32} color="white" fill="white" />
+                                    )}
+                                </button>
                             </>
-                        ) : (
+                            ) : (
                             <img
                                 src={media.url}
                                 alt={product.name}
-                                className="h-full w-full object-contain bg-black touch-none"
+                                className="h-full w-full object-contain bg-black"
                                 loading="lazy"
                             />
                         )}
@@ -433,12 +294,11 @@ export default function ProductScreen({ product, isActive }: any) {
                 ))}
             </div>
 
-            {/* Slider Indicators */}
             <div className="absolute bottom-20 left-0 right-0 flex justify-center gap-2 z-10">
                 {mediaItems.map((_, idx) => (
                     <button
                         key={idx}
-                        onClick={() => goToSlide(idx)}
+                        onClick={() => setCurrentMediaIndex(idx)}
                         className={`h-1.5 rounded-full transition-all duration-300 ${
                             idx === currentMediaIndex ? 'w-4 bg-white' : 'w-2 bg-gray-500 hover:bg-gray-400'
                         }`}
@@ -447,7 +307,6 @@ export default function ProductScreen({ product, isActive }: any) {
                 ))}
             </div>
 
-            {/* Product Info */}
             <div className="absolute bottom-23 left-0 right-0 p-4 z-10 w-[80%]">
                 <div className="text-white">
                     <div className="flex items-center mb-2">
@@ -456,6 +315,7 @@ export default function ProductScreen({ product, isActive }: any) {
                         <span className="ml-2 text-sm line-through text-gray-300">
                             ₦{formatNumberWithCommas(Number((product.basePrice / (1 - product.discount / 100)).toFixed(0)))}
                         </span>
+
                         )}
                     </div>
                     <h3 className="font-bold text-lg truncate">{product.name}</h3>
@@ -482,15 +342,20 @@ export default function ProductScreen({ product, isActive }: any) {
                     </div>
                 </div>
             </div>
+            <button>
+                view more
+            </button>
 
-            {/* Side Action Buttons */}
             <div className="absolute right-4 bottom-24 flex flex-col items-center space-y-4 z-10">
                 <div className="flex flex-col items-center">
                     <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
                         <Link href={session?.user?.id === product.userId._id ? '/profile' : `/profile/${product.userId._id}`}>
+
                             <img 
                                 src={product.userId.avatar} 
                                 alt="User profile"
+                                // width={100}
+                                // height={100}
                                 className="w-full h-full rounded-full object-cover"
                                 loading="lazy"
                             />
@@ -504,6 +369,9 @@ export default function ProductScreen({ product, isActive }: any) {
                     initiallyLiked={initiallyLiked}
                     className="like-button"
                 />
+
+
+                {/* <CommentsDrawer productId={product._id} commentCount={50}/> */}
 
                 <button 
                     onClick={() => setSaved(!saved)}
