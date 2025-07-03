@@ -7,7 +7,7 @@ import {
     Users, 
     LayoutDashboard, 
     ShoppingCart, 
-    MessageSquare, 
+    MessageSquare,
     User,
     ChevronLeft,
     ChevronRight,
@@ -36,21 +36,18 @@ export default function HomeLeftBar() {
         { icon: <User className="w-5 h-5" />, name: "Profile" },
     ];
 
-  // Initialize component and check mobile status
     useEffect(() => {
         setIsMounted(true);
         setIsMobile(window.innerWidth < 1024);
         setIsOpen(window.innerWidth >= 1024);
     }, []);
 
-  // Handle window resize
     useEffect(() => {
         if (!isMounted) return;
 
         const handleResize = () => {
             const mobile = window.innerWidth < 1024;
             setIsMobile(mobile);
-            // On mobile, start collapsed; on desktop, start expanded
             setIsOpen(!mobile);
         };
 
@@ -58,19 +55,18 @@ export default function HomeLeftBar() {
         return () => window.removeEventListener('resize', handleResize);
     }, [isMounted]);
 
-  // Handle clicks outside sidebar on mobile
     useEffect(() => {
         if (!isMounted || !isMobile) return;
 
-            const handleClickOutside = (e: MouseEvent) => {
+        const handleClickOutside = (e: MouseEvent) => {
             const sidebar = document.querySelector('aside');
             if (sidebar && !sidebar.contains(e.target as Node)) {
                 setIsOpen(false);
             }
         };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isMobile, isMounted]);
 
     const handleSearchClick = () => {
@@ -103,14 +99,15 @@ export default function HomeLeftBar() {
 
     return (
         <aside className={`
-            lg:relative hidden md:block top-0 left-0 h-screen z-50 transition-all duration-300 ease-in-out
-            bg-white border-r border-gray-200 shadow-lg lg:shadow-none
+            lg:relative hidden sm:block top-0 left-0 h-screen z-50 transition-all duration-300 ease-in-out 
+            bg-gradient-to-b from-emerald-800 to-emerald-900
+            border-r border-emerald-700/50 shadow-lg lg:shadow-none text-white
             ${isOpen ? 'w-64' : 'w-20'}
         `}>
             <div className="h-full flex flex-col p-4">
                 <button 
                     onClick={toggleSidebar}
-                    className="p-2 rounded-full hover:bg-gray-100 mb-4 self-end lg:self-start"
+                    className="p-2 rounded-full hover:bg-emerald-600/50 mb-4 self-end lg:self-start text-white"
                     aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
                 >
                     {isOpen ? (
@@ -119,6 +116,7 @@ export default function HomeLeftBar() {
                         <Menu className="w-5 h-5" />
                     )}
                 </button>
+                
                 <nav className="flex-1">
                     <ul className="space-y-2">
                         {menuItems.map((item) => (
@@ -134,12 +132,12 @@ export default function HomeLeftBar() {
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 placeholder="Search..."
-                                                className="w-full pl-4 pr-10 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                                className="w-full pl-4 pr-10 py-2 text-sm rounded-lg bg-emerald-700/50 border border-emerald-500/30 text-white placeholder-emerald-300/70 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent"
                                                 autoFocus
                                             />
                                             <button
                                                 type="submit"
-                                                className="absolute right-2 text-gray-500 hover:text-emerald-600"
+                                                className="absolute right-2 text-emerald-300 hover:text-white"
                                                 aria-label="Search"
                                             >
                                                 <Search className="w-4 h-4" />
@@ -151,17 +149,17 @@ export default function HomeLeftBar() {
                                             onClick={handleSearchClick}
                                             className={`
                                             w-full flex items-center p-3 rounded-lg transition-colors
-                                            hover:bg-gray-100 relative
+                                            hover:bg-emerald-600/50 relative
                                             ${isOpen ? 'justify-start space-x-4' : 'justify-center'}
                                             `}
                                             onMouseEnter={() => setHoveredItem(item.name)}
                                             onMouseLeave={() => setHoveredItem(null)}
                                         >
-                                            <span>{item.icon}</span>
-                                            {isOpen && <span className="font-medium text-sm">{item.name}</span>}
+                                            <span className="text-emerald-200">{item.icon}</span>
+                                            {isOpen && <span className="font-medium text-sm text-white">{item.name}</span>}
                                         
                                             {!isOpen && hoveredItem === item.name && (
-                                            <div className="absolute left-full ml-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap">
+                                            <div className="absolute left-full ml-2 px-3 py-2 bg-emerald-800 text-white text-sm rounded-md whitespace-nowrap shadow-lg border border-emerald-700/50">
                                                 {item.name}
                                             </div>
                                             )}
@@ -172,17 +170,17 @@ export default function HomeLeftBar() {
                                     <button
                                         className={`
                                         w-full flex items-center p-3 rounded-lg transition-colors
-                                        hover:bg-gray-100 relative
+                                        hover:bg-emerald-600/50 relative
                                         ${isOpen ? 'justify-start space-x-4' : 'justify-center'}
                                         `}
                                         onMouseEnter={() => setHoveredItem(item.name)}
                                         onMouseLeave={() => setHoveredItem(null)}
                                     >
-                                        <span>{item.icon}</span>
-                                        {isOpen && <span className="font-medium text-sm">{item.name}</span>}
+                                        <span className="text-emerald-200">{item.icon}</span>
+                                        {isOpen && <span className="font-medium text-sm text-white">{item.name}</span>}
                                     
                                         {!isOpen && hoveredItem === item.name && (
-                                        <div className="absolute left-full ml-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-md whitespace-nowrap">
+                                        <div className="absolute left-full ml-2 px-3 py-2 bg-emerald-800 text-white text-sm rounded-md whitespace-nowrap shadow-lg border border-emerald-700/50">
                                             {item.name}
                                         </div>
                                         )}

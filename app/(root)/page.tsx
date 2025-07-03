@@ -10,7 +10,7 @@ export default function HomePage() {
       <HomeLeftBar />
       {/* <div className=""> */}
         {/* <TopNavigation /> */}
-        <ProductFetch />
+      <ProductFetch />
       {/* </div> */}
       <div className="hidden lg:flex lg:w-80 xl:w-96 bg-white border-l">
         <div className="p-4">

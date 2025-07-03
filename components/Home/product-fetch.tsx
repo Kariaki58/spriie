@@ -1,4 +1,3 @@
-import TopNavigation from "../app-ui/top-navigation";
 import ContentFeed from "./ContentFeed";
 import { Product } from "./ContentFeed";
 
@@ -62,8 +61,6 @@ export default async function ProductFetch() {
         );
     }
     return (
-        // <div>
-            <ContentFeed products={products} />
-        // </div>
+        <ContentFeed products={products} />
     )
 }
