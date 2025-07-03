@@ -4,7 +4,7 @@ import "./globals.css";
 import AuthProvider from "./AuthProvider";
 import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "@/components/app-ui/QueryClientProvider";
-
+import { Analytics } from "@vercel/analytics/next"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +31,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Analytics/>
         <Providers>
           <AuthProvider>
             {children}
