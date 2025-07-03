@@ -66,6 +66,13 @@ export default function ProductScreen({ product, isActive }: any) {
     const sliderIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [autoSlide, setAutoSlide] = useState(false);
 
+    // Touch handling refs
+    const touchStartX = useRef(0);
+    const touchStartY = useRef(0);
+    const touchEndX = useRef(0);
+    const [isSwiping, setIsSwiping] = useState(false);
+    const SWIPE_THRESHOLD = 50;
+
     const { data: session } = useSession();
 
     const mediaItems = [
@@ -213,8 +220,16 @@ export default function ProductScreen({ product, isActive }: any) {
         showHeartAnimation();
     };
 
-    const startDrag = (e: React.MouseEvent | React.TouchEvent) => {
-        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    // Enhanced touch handlers for mobile swiping
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+        touchEndX.current = e.touches[0].clientX;
+        setIsSwiping(true);
+        setAutoSlide(false);
+        
+        // Mouse drag fallback
+        const clientX = e.touches[0].clientX;
         setIsDragging(true);
         setStartX(clientX);
         if (scrollContainerRef.current) {
@@ -222,10 +237,65 @@ export default function ProductScreen({ product, isActive }: any) {
         }
     };
 
-    const duringDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!isSwiping) return;
+        touchEndX.current = e.touches[0].clientX;
+        
+        // Prevent scrolling when swiping horizontally
+        const xDiff = Math.abs(touchStartX.current - touchEndX.current);
+        const yDiff = Math.abs(e.touches[0].clientY - touchStartY.current);
+        
+        if (xDiff > yDiff && xDiff > 5) {
+            e.preventDefault();
+        }
+        
+        // Mouse drag fallback
+        if (isDragging) {
+            const clientX = e.touches[0].clientX;
+            const walk = (clientX - startX) * 2;
+            if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (!isSwiping) return;
+        
+        const difference = touchStartX.current - touchEndX.current;
+        
+        // Swipe left (next slide)
+        if (difference > SWIPE_THRESHOLD) {
+            setCurrentMediaIndex(prev => 
+                prev === mediaItems.length - 1 ? 0 : prev + 1
+            );
+        } 
+        // Swipe right (previous slide)
+        else if (difference < -SWIPE_THRESHOLD) {
+            setCurrentMediaIndex(prev => 
+                prev === 0 ? mediaItems.length - 1 : prev - 1
+            );
+        }
+        
+        setIsSwiping(false);
+        setIsDragging(false);
+        setAutoSlide(true);
+    };
+
+    const startDrag = (e: React.MouseEvent) => {
+        const clientX = e.clientX;
+        setIsDragging(true);
+        setStartX(clientX);
+        if (scrollContainerRef.current) {
+            setScrollLeft(scrollContainerRef.current.scrollLeft);
+        }
+        setAutoSlide(false);
+    };
+
+    const duringDrag = (e: React.MouseEvent) => {
         if (!isDragging) return;
         e.preventDefault();
-        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientX = e.clientX;
         const walk = (clientX - startX) * 2;
         if (scrollContainerRef.current) {
             scrollContainerRef.current.scrollLeft = scrollLeft - walk;
@@ -261,16 +331,12 @@ export default function ProductScreen({ product, isActive }: any) {
         container.addEventListener('mouseup', endDrag);
         container.addEventListener('mousemove', duringDrag as any);
         container.addEventListener('mouseleave', endDrag);
-        container.addEventListener('touchend', endDrag);
-        container.addEventListener('touchmove', duringDrag as any);
 
         return () => {
             container.removeEventListener('scroll', handleScroll);
             container.removeEventListener('mouseup', endDrag);
             container.removeEventListener('mousemove', duringDrag as any);
             container.removeEventListener('mouseleave', endDrag);
-            container.removeEventListener('touchend', endDrag);
-            container.removeEventListener('touchmove', duringDrag as any);
         };
     }, [isDragging, startX, scrollLeft]);
 
@@ -287,19 +353,21 @@ export default function ProductScreen({ product, isActive }: any) {
     : false;
 
     return (
-        <div className="h-[100vh] w-full max-w-md mx-auto bg-black relative overflow-hidden snap-start">
+        <div className="h-[100vh] w-full max-w-md mx-auto bg-black relative overflow-hidden snap-start touch-none">
             <div 
                 ref={scrollContainerRef}
                 className="relative h-full w-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
                 onMouseDown={startDrag}
-                onTouchStart={startDrag}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
             >
                 {showHeart && <HeartAnimation onAnimationEnd={handleAnimationEnd} />}
 
                 {mediaItems.map((media, index) => (
                     <div 
                         key={index} 
-                        className="flex-shrink-0 w-full h-full snap-center relative group"
+                        className="flex-shrink-0 w-full h-full snap-center relative group touch-none"
                         onMouseEnter={() => media.type === 'video' && setShowPlayButton(true)}
                         onMouseLeave={() => media.type === 'video' && setShowPlayButton(false)}
                         onTouchStart={() => media.type === 'video' && setShowPlayButton(true)}
@@ -310,7 +378,7 @@ export default function ProductScreen({ product, isActive }: any) {
                                 <video
                                     ref={index === 0 ? videoRef : null}
                                     src={media.url}
-                                    className="h-full w-full object-cover"
+                                    className="h-full w-full object-cover touch-none"
                                     loop
                                     muted
                                     playsInline
@@ -361,7 +429,7 @@ export default function ProductScreen({ product, isActive }: any) {
                             <img
                                 src={media.url}
                                 alt={product.name}
-                                className="h-full w-full object-contain bg-black"
+                                className="h-full w-full object-contain bg-black touch-none"
                                 loading="lazy"
                             />
                         )}
