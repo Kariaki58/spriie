@@ -77,18 +77,37 @@ export default function ProductScreen({ product, isActive }: any) {
         ...product.images.map((img: string) => ({ type: 'image', url: img }))
     ];
 
+    // const togglePlayPause = () => {
+    //     if (videoRef.current) {
+    //         if (videoRef.current.paused) {
+    //             videoRef.current.play()
+    //             .then(() => setIsPlaying(true))
+    //             .catch(e => console.log("Play failed:", e));
+    //         } else {
+    //             videoRef.current.pause();
+    //             setIsPlaying(false);
+    //         }
+    //     }
+    // };
+
     const togglePlayPause = () => {
-        if (videoRef.current) {
-            if (videoRef.current.paused) {
-                videoRef.current.play()
+        const video = videoRef.current;
+        if (!video) return;
+
+        if (video.paused) {
+            video.play()
                 .then(() => setIsPlaying(true))
-                .catch(e => console.log("Play failed:", e));
-            } else {
-                videoRef.current.pause();
-                setIsPlaying(false);
-            }
+                .catch((e) => {
+                    console.log("Play failed:", e);
+                    setIsPlaying(false);
+                });
+        } else {
+            video.pause();
+            setIsPlaying(false);
         }
     };
+
+
 
     useEffect(() => {
         if (!videoRef.current) return;
@@ -260,11 +279,13 @@ export default function ProductScreen({ product, isActive }: any) {
                                     muted
                                     playsInline
                                     poster={product.thumbnail}
+                                    onPlay={() => setIsPlaying(true)}
+                                    onPause={() => setIsPlaying(false)}
                                     onClick={(e) => {
-                                        e.stopPropagation(); // Prevent double-tap from triggering
+                                        e.stopPropagation();
                                         togglePlayPause();
                                     }}
-                                />
+                                    />
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
