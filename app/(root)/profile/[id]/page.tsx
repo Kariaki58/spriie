@@ -7,8 +7,7 @@ import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
-import { MessageSquare, Plus } from "lucide-react";
-
+import { MessageSquare, Plus, Share2, Bell, BadgeCheck } from "lucide-react";
 
 interface UserUpload {
   _id: string;
@@ -46,13 +45,13 @@ interface UserData {
   following: number;
   posts: number;
   isSeller: boolean;
+  trustPercentage?: number;
   content: ContentItem[];
 }
 
 interface ApiResponse {
   message: UserUpload[];
 }
-
 
 export default function UserProfilePage() {
   const { data: session, status } = useSession();
@@ -77,7 +76,6 @@ export default function UserProfilePage() {
 
         const data: ApiResponse = await response.json();
         
-        // Set user info
         setFormData(prev => ({
           ...prev,
           fullName: data.message[0]?.userId?.name || "",
@@ -85,7 +83,6 @@ export default function UserProfilePage() {
           bio: data.message[0]?.userId?.bio || prev.bio
         }));
 
-        // Transform user uploads to match our content structure
         const uploads: ContentItem[] = data.message.map((upload: UserUpload) => ({
           id: upload._id,
           type: upload.video ? "video" : "image",
@@ -97,7 +94,6 @@ export default function UserProfilePage() {
         }));
         
         setUserUploads(uploads);
-      
       
       } catch (error) {
         console.error('Error fetching user info:', error);
@@ -111,6 +107,15 @@ export default function UserProfilePage() {
 
   const isLoading = status === "loading" || !formData.fullName;
 
+  // Calculate trust percentage (mock data - in a real app this would come from the API)
+  const calculateTrustPercentage = () => {
+    if (!userUploads.length) return 0;
+    const base = 70; // Start with 70%
+    const uploadBonus = Math.min(userUploads.length * 2, 20); // +2% per upload, max +20%
+    const followerBonus = Math.min(10, 10); // +10% if they have followers (mock)
+    return Math.min(base + uploadBonus + followerBonus, 95); // Cap at 95%
+  };
+
   const userData: UserData = {
     username: session?.user?.username || "johndoe",
     fullName: formData.fullName,
@@ -120,6 +125,7 @@ export default function UserProfilePage() {
     following: 0,
     posts: userUploads.length,
     isSeller: session?.user?.role === "seller" || false,
+    trustPercentage: calculateTrustPercentage(),
     content: userUploads,
   };
 
@@ -130,6 +136,21 @@ export default function UserProfilePage() {
 
   const handleMessage = () => {
     console.log("Messaging seller");
+  };
+
+  const handleShare = () => {
+    console.log("Sharing profile");
+    if (navigator.share) {
+      navigator.share({
+        title: `${userData.fullName}'s Profile`,
+        text: `Check out ${userData.fullName}'s profile on our platform`,
+        url: window.location.href,
+      }).catch(console.error);
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      navigator.clipboard.writeText(window.location.href);
+      alert("Profile link copied to clipboard!");
+    }
   };
 
   if (isLoading) {
@@ -182,21 +203,80 @@ export default function UserProfilePage() {
 
   return (
     <div className="relative h-screen w-full overflow-y-auto bg-gray-50">
+      {/* Header with share and notification buttons */}
+      <header className="sticky top-0 z-10 bg-white shadow-sm p-4">
+        <div className="flex justify-between items-center">
+          <h1 className="text-xl font-bold">{userData.fullName}</h1>
+          <div className="flex gap-2">
+            {userData.isSeller && !isCurrentUser && (
+              <Button variant="ghost" size="icon" onClick={() => console.log("Toggle notifications")}>
+                <Bell className="h-5 w-5" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={handleShare}>
+              <Share2 className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
       <section className="p-4 bg-white">
         <div className="flex items-center gap-4">
-          <Avatar className="w-20 h-20 border-2 border-emerald-500">
-            <AvatarImage src={userData.image} />
-            <AvatarFallback>
-              {userData.fullName.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="w-20 h-20 border-2 border-emerald-500">
+              <AvatarImage src={userData.image} />
+              <AvatarFallback>
+                {userData.fullName.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            {userData.isSeller && userData.trustPercentage && (
+              <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow-md border">
+                <div className="relative w-8 h-8 flex items-center justify-center">
+                  <svg className="w-full h-full" viewBox="0 0 36 36">
+                    <path
+                      d="M18 2.0845
+                        a 15.9155 15.9155 0 0 1 0 31.831
+                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#e6e6e6"
+                      strokeWidth="3"
+                    />
+                    <path
+                      d="M18 2.0845
+                        a 15.9155 15.9155 0 0 1 0 31.831
+                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="3"
+                      strokeDasharray={`${userData.trustPercentage}, 100`}
+                    />
+                  </svg>
+                  <span className="absolute text-xs font-bold text-emerald-600">
+                    {userData.trustPercentage}%
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex-1">
-            <h2 className="text-xl font-bold">{userData.fullName}</h2>
+            <div className="flex items-center gap-1">
+              <h2 className="text-xl font-bold">{userData.fullName}</h2>
+              {userData.isSeller && (
+                <BadgeCheck className="h-5 w-5 text-emerald-500" />
+              )}
+            </div>
             <p className="text-gray-600">@{userData.username}</p>
           </div>
         </div>
 
         <p className="mt-3 text-gray-700">{userData.bio}</p>
+
+        {userData.isSeller && (
+          <div className="mt-2 flex items-center gap-1 text-sm text-emerald-600">
+            <BadgeCheck className="h-4 w-4" />
+            <span>Verified Seller</span>
+          </div>
+        )}
 
         <div className="flex gap-4 mt-4">
           <div className="text-center">
@@ -214,12 +294,30 @@ export default function UserProfilePage() {
         </div>
 
         <div className="mt-4 flex gap-2">
-          {userData.isSeller ? (
-            // <Link href="/vendor" passHref>
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                follow
+          {isCurrentUser ? (
+            <Link href="/settings" passHref>
+              <Button className="w-full" variant="outline">
+                Edit Profile
               </Button>
-            // </Link>
+            </Link>
+          ) : userData.isSeller ? (
+            <>
+              <Button 
+                className="bg-emerald-600 hover:bg-emerald-700"
+                onClick={handleFollow}
+                variant={isFollowing ? "outline" : "default"}
+              >
+                {isFollowing ? "Following" : "Follow"}
+              </Button>
+              <Button 
+                variant="outline" 
+                className="border-emerald-600 text-emerald-600"
+                onClick={handleMessage}
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Message
+              </Button>
+            </>
           ) : (
             <>
               <Button 
