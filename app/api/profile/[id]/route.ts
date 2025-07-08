@@ -1,46 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
-import User from "@/models/user";
 import connectToDatabase from "@/lib/mongoose";
+import Product from "@/models/product";
+import Store from "@/models/store";
+import { getServerSession } from "next-auth";
+import { options } from "../../auth/options";
+import mongoose from "mongoose";
+import User from "@/models/user";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: {
+    params: { id: string }
+}) {
     try {
+        const profileID = await params;
+
+        console.log({
+            profileID
+        });
+        
+        const session = await getServerSession(options);
+        if (!session) {
+            return NextResponse.json(
+                { error: "Unauthorized: Please log in" },
+                { status: 401 }
+            );
+        }
+
         await connectToDatabase();
 
-        const { id } = await params;
-
-        if (!id) {
+        const userId = session.user?.id;
+        if (!userId || !mongoose.Types.ObjectId.isValid(profileID.id)) {
             return NextResponse.json(
-                { success: false, message: "User ID is required" },
+                { error: "Invalid user ID" },
                 { status: 400 }
             );
         }
 
-        const user = await User.findById(id);
-
+        const user = await User.findById(profileID.id);
         if (!user) {
-            return NextResponse.json(
-                { success: false, message: "User not found" },
-                { status: 404 }
-            );
+            return NextResponse.json({
+                error: "Invalid user"
+            }, { status: 404 });
         }
 
-        const userData = {
-            _id: user._id,
-            name: user.name,
-            image: user.avatar,
-            email: user.email,
-        };
+        const userUpload = await Product.find({ userId: profileID.id }).populate('userId')
 
-        return NextResponse.json(
-            { success: true, data: userData },
-            { status: 200 }
-        );
+        console.log({ userUpload })
+        console.log(userUpload.userId)
+
+
+        return NextResponse.json({
+            message: userUpload
+        }, { status: 200 });
 
     } catch (error) {
-        console.error("Error fetching user:", error);
-        return NextResponse.json(
-            { success: false, message: "Internal server error" },
-            { status: 500 }
-        );
+        console.log(error);
+        return NextResponse.json({
+            error: "Something went wrong",
+            details: error instanceof Error ? error.message : String(error)
+        }, { status: 500 });
     }
 }

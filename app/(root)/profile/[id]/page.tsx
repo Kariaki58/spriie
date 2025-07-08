@@ -9,29 +9,50 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
 import { MessageSquare, Plus } from "lucide-react";
 
-const mockContent = [
-  {
-    id: 1,
-    type: "image",
-    url: "https://images.unsplash.com/photo-1715927928351-07a3d5b1e704",
-    likes: 0,
-    comments: 0,
-  },
-  {
-    id: 2,
-    type: "video",
-    url: "https://example.com/video1.mp4",
-    likes: 0,
-    comments: 0,
-  },
-  {
-    id: 3,
-    type: "image",
-    url: "https://images.unsplash.com/photo-1715937527914-0e0a1f1b1b1b",
-    likes: 0,
-    comments: 0,
-  },
-];
+
+interface UserUpload {
+  _id: string;
+  userId: {
+    name: string;
+    avatar: string;
+    bio?: string;
+  };
+  title: string;
+  video?: string;
+  thumbnail?: string;
+  images?: string[];
+  likes?: number;
+  comments?: any[];
+  discountedPrice?: number;
+  basePrice?: number;
+}
+
+interface ContentItem {
+  id: string;
+  type: "image" | "video";
+  url: string;
+  likes: number;
+  comments: number;
+  title: string;
+  price?: number;
+}
+
+interface UserData {
+  username: string;
+  fullName: string;
+  bio: string;
+  image: string;
+  followers: number;
+  following: number;
+  posts: number;
+  isSeller: boolean;
+  content: ContentItem[];
+}
+
+interface ApiResponse {
+  message: UserUpload[];
+}
+
 
 export default function UserProfilePage() {
   const { data: session, status } = useSession();
@@ -40,6 +61,7 @@ export default function UserProfilePage() {
     image: "",
     bio: "Digital creator | Photography enthusiast | Sharing my journey",
   });
+  const [userUploads, setUserUploads] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const path = usePathname();
   const id = path.split('/')[2];
@@ -52,47 +74,61 @@ export default function UserProfilePage() {
         if (!response.ok) {
           throw new Error('Failed to fetch user data');
         }
-        const data = await response.json();
+
+        const data: ApiResponse = await response.json();
         
+        // Set user info
         setFormData(prev => ({
           ...prev,
-          fullName: data.data.name || prev.fullName,
-          image: data.data.image || prev.image,
-          bio: data.data.bio || prev.bio
+          fullName: data.message[0]?.userId?.name || "",
+          image: data.message[0]?.userId?.avatar || "",
+          bio: data.message[0]?.userId?.bio || prev.bio
         }));
+
+        // Transform user uploads to match our content structure
+        const uploads: ContentItem[] = data.message.map((upload: UserUpload) => ({
+          id: upload._id,
+          type: upload.video ? "video" : "image",
+          url: upload.video || upload.thumbnail || upload.images?.[0] || "",
+          likes: upload.likes || 0,
+          comments: upload.comments?.length || 0,
+          title: upload.title,
+          price: upload.discountedPrice || upload.basePrice
+        }));
+        
+        setUserUploads(uploads);
+      
       
       } catch (error) {
         console.error('Error fetching user info:', error);
       }
     };
 
-    if (id && !isCurrentUser) {
+    if (id) {
       fetchUserInfo();
     }
   }, [id, isCurrentUser]);
 
-  const isLoading = status === "loading";
+  const isLoading = status === "loading" || !formData.fullName;
 
-  const userData = {
-    username: "johndoe",
+  const userData: UserData = {
+    username: session?.user?.username || "johndoe",
     fullName: formData.fullName,
     bio: formData.bio,
     image: formData.image,
     followers: 0,
     following: 0,
-    posts: 0,
+    posts: userUploads.length,
     isSeller: session?.user?.role === "seller" || false,
-    content: mockContent,
+    content: userUploads,
   };
 
   const handleFollow = () => {
     setIsFollowing(!isFollowing);
-    // Add your follow/unfollow API call here
     console.log(isFollowing ? "Unfollowing user" : "Following user");
   };
 
   const handleMessage = () => {
-    // Add your messaging functionality here
     console.log("Messaging seller");
   };
 
@@ -151,7 +187,7 @@ export default function UserProfilePage() {
           <Avatar className="w-20 h-20 border-2 border-emerald-500">
             <AvatarImage src={userData.image} />
             <AvatarFallback>
-              {userData.image}
+              {userData.fullName.charAt(0)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
@@ -179,46 +215,79 @@ export default function UserProfilePage() {
 
         <div className="mt-4 flex gap-2">
           {userData.isSeller ? (
-            <Link href="/vendor" passHref>
+            // <Link href="/vendor" passHref>
               <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                Seller Dashboard
+                follow
               </Button>
-            </Link>
+            // </Link>
           ) : (
-            <Button 
+            <>
+              <Button 
+                className="w-full" 
+                onClick={handleFollow}
+                variant={isFollowing ? "outline" : "default"}
+              >
+                {isFollowing ? "Following" : "Follow"}
+              </Button>
+              <Button 
                 variant="outline" 
                 className="border-emerald-600 text-emerald-600"
                 onClick={handleMessage}
-            >
+              >
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Message
-            </Button>
+              </Button>
+            </>
           )}
         </div>
       </section>
 
       <section className="mt-4 p-2 pb-16">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
-          {userData.content.map((item) => (
-            <Card key={item.id} className="aspect-square overflow-hidden group relative">
-              {item.type === "image" ? (
-                <img
-                  src={item.url}
-                  alt="Post"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <div className="relative w-full h-full">
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors duration-300" />
-                  <video
+        {userData.content.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+            {userData.content.map((item: ContentItem) => (
+              <Card key={item.id} className="aspect-square p-0 overflow-hidden group relative">
+                {item.type === "image" ? (
+                  <img
                     src={item.url}
-                    className="w-full h-full object-cover"
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="bg-black/30 rounded-full p-2 backdrop-blur-sm">
+                ) : (
+                  <div className="relative w-full h-full">
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors duration-300" />
+                    <video
+                      src={item.url}
+                      className="w-full h-full object-cover"
+                      muted
+                      loop
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="bg-black/30 rounded-full p-2 backdrop-blur-sm">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-6 text-white"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-6 w-6 text-white"
+                        className="h-4 w-4 mr-1"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -227,54 +296,54 @@ export default function UserProfilePage() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                         />
                       </svg>
-                    </div>
+                      {item.likes}
+                    </span>
+                    <span className="flex items-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                      {item.comments}
+                    </span>
                   </div>
+                  {item.price && (
+                    <div className="mt-1 text-right font-medium">
+                      ₦{(item.price / 100).toLocaleString()}
+                    </div>
+                  )}
                 </div>
-              )}
-              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 mr-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                      />
-                    </svg>
-                    {item.likes}
-                  </span>
-                  <span className="flex items-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 mr-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                      />
-                    </svg>
-                    {item.comments}
-                  </span>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+              <Plus className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">No posts yet</h3>
+            <p className="text-gray-500 mt-1 text-center max-w-md">
+              When {isCurrentUser ? "you share" : "they share"} photos or videos, they'll appear here.
+            </p>
+            {isCurrentUser && (
+              <Button className="mt-4" variant="outline">
+                Share your first photo
+              </Button>
+            )}
+          </div>
+        )}
       </section>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 flex justify-around">
