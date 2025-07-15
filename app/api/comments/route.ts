@@ -6,6 +6,7 @@ import User from "@/models/user";
 import { getServerSession } from "next-auth";
 import { options } from "../auth/options";
 
+
 export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
@@ -23,7 +24,12 @@ export async function GET(req: NextRequest) {
     console.log(productId)
 
     const comment = await Comment.find({ product: productId})
+
+
+    console.log({ comment })
     
+
+    console.log("commentDisplay..................")
 
     const comments = await Comment.find({ product: productId, parentComment: { $exists: false } })
       .populate({
@@ -40,6 +46,7 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: -1 });
 
     console.log({comments})
+    console.log("commentDisplay..................")
 
     return NextResponse.json(comments, { status: 200 });
   } catch (error) {

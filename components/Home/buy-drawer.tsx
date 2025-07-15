@@ -96,6 +96,10 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
         }));
     };
 
+    const handleAddToCart = () => {
+        console.log("handle add to cart")
+    }
+
     const handlePlaceOrder = async () => {
         if (!PaystackPop) {
             toast("Payment SDK not loaded. Please try again.");

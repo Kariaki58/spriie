@@ -265,7 +265,6 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                     <div key={comment._id} className="border-b border-gray-200 dark:border-gray-700 pb-4">
                       <div className="flex gap-3">
                         <Avatar className="h-10 w-10">
-                          {/* <AvatarImage src={comment.user.avatar} /> */}
                           <AvatarFallback>{comment.user.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
@@ -304,7 +303,6 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                             )}
                           </div>
 
-                          {/* Reply form */}
                           {replyingTo === comment._id && (
                             <form 
                               onSubmit={(e) => handleReplySubmit(e, comment._id)}
@@ -328,7 +326,6 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                             </form>
                           )}
 
-                          {/* Replies */}
                           {comment.replies.length > 0 && (
                             <div className="mt-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700 space-y-3">
                               {comment.replies.map((reply) => (
@@ -378,7 +375,6 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                 </div>
               )}
 
-              {/* Comment form */}
               {session && (
                 <form onSubmit={handleCommentSubmit} className="mt-6">
                   <div className="flex gap-3">

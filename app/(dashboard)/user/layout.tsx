@@ -17,7 +17,6 @@ const sidebarConfig = {
     navItems: [
         { href: '/user', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },        
         { href: '/user/orders', label: 'Orders', icon: <ShoppingCart className="w-5 h-5" /> },
-        { href: '/user/order-history', label: 'Order History', icon: <History className="w-5 h-5" /> },
         { href: '/user/product-tracking', label: 'Product Tracking', icon: <PackageSearch className="w-5 h-5" /> },
         
         { href: '/user/reviews', label: 'My Reviews', icon: <Star className="w-5 h-5" /> },

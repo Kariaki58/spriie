@@ -85,13 +85,12 @@ export default function ProfilePage() {
     fetchContent();
   }, []);
 
-  // Calculate trust percentage (mock data)
   const calculateTrustPercentage = () => {
     if (!mockContent.length) return 0;
-    const base = 70; // Start with 70%
-    const uploadBonus = Math.min(mockContent.length * 2, 20); // +2% per upload, max +20%
-    const followerBonus = Math.min(10, 10); // +10% if they have followers (mock)
-    return Math.min(base + uploadBonus + followerBonus, 95); // Cap at 95%
+    const base = 70;
+    const uploadBonus = Math.min(mockContent.length * 2, 20);
+    const followerBonus = Math.min(10, 10);
+    return Math.min(base + uploadBonus + followerBonus, 95);
   };
 
   const isLoading = status === "loading";

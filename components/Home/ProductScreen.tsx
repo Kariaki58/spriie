@@ -12,6 +12,7 @@ import BuyDrawer from './buy-drawer';
 import CommentsDrawer from './comment-drawer';
 import LikeButton from './LikeButton';
 
+
 export interface Product {
     _id: string;
     name: string;
@@ -405,7 +406,7 @@ export default function ProductScreen({ product, isActive }: any) {
                 />
 
 
-                {/* <CommentsDrawer productId={product._id} commentCount={50}/> */}
+                <CommentsDrawer productId={product._id} commentCount={50}/>
 
                 <button 
                     onClick={() => setSaved(!saved)}
