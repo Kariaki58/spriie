@@ -22,8 +22,8 @@ const sidebarConfig = {
         { href: '/user/reviews', label: 'My Reviews', icon: <Star className="w-5 h-5" /> },
         { href: '/user/pending-reviews', label: 'Pending Reviews', icon: <Star className="w-5 h-5" /> },
         
-        { href: '/user/become-seller', label: 'Become a Seller', icon: <UserPlus className="w-5 h-5" />, highlight: true },
-        { href: '/user/seller-dashboard', label: 'Seller Dashboard', icon: <ShieldCheck className="w-5 h-5" /> },
+        { href: '/store', label: 'Become a Seller', icon: <UserPlus className="w-5 h-5" />, highlight: true },
+        { href: '/vendor', label: 'Seller Dashboard', icon: <ShieldCheck className="w-5 h-5" /> },
         
         { href: '/user/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> }
     ]

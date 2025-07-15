@@ -1,6 +1,6 @@
 import DashboardSidebar from '@/components/dashboard/Sidebar'
 import TopNav from '@/components/dashboard/TopNav'
-import { Home, ShoppingCart, Users, Settings, Package, BarChart2, TableOfContents, CloudUpload, MonitorUp } from 'lucide-react'
+import { Home, ShoppingCart, Users, Settings, Package, BarChart2, TableOfContents, CloudUpload, MonitorUp, LayoutDashboard } from 'lucide-react'
 import ProviderImport from './provider-import'
 
 const sidebarConfig = {
@@ -14,6 +14,7 @@ const sidebarConfig = {
         { href: '/vendor/orders', label: 'Orders', icon: <ShoppingCart className="w-5 h-5" /> },
         { href: '/vendor/customers', label: 'Customers', icon: <Users className="w-5 h-5" /> },
         { href: '/vendor/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
+        { href: '/user', label: 'User Dashboard', icon: <LayoutDashboard className="w-5 h-5" />}
     ]
 }
 
