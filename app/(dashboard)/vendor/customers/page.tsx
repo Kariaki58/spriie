@@ -39,7 +39,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/32.jpg",
       orders: 5,
       productsBought: 12,
-      totalSpent: 1245.99,
+      totalSpent: 1245990, // ₦1,245,990
       lastPurchase: "2023-06-15",
     },
     {
@@ -49,7 +49,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/44.jpg",
       orders: 3,
       productsBought: 8,
-      totalSpent: 876.5,
+      totalSpent: 876500, // ₦876,500
       lastPurchase: "2023-06-10",
     },
     {
@@ -59,7 +59,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/67.jpg",
       orders: 7,
       productsBought: 21,
-      totalSpent: 2341.75,
+      totalSpent: 2341750, // ₦2,341,750
       lastPurchase: "2023-06-18",
     },
     {
@@ -69,7 +69,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/63.jpg",
       orders: 2,
       productsBought: 4,
-      totalSpent: 432.0,
+      totalSpent: 432000, // ₦432,000
       lastPurchase: "2023-05-28",
     },
     {
@@ -79,7 +79,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/85.jpg",
       orders: 4,
       productsBought: 9,
-      totalSpent: 987.25,
+      totalSpent: 987250, // ₦987,250
       lastPurchase: "2023-06-12",
     },
     {
@@ -89,7 +89,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/33.jpg",
       orders: 6,
       productsBought: 15,
-      totalSpent: 1567.8,
+      totalSpent: 1567800, // ₦1,567,800
       lastPurchase: "2023-06-20",
     },
     {
@@ -99,7 +99,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/22.jpg",
       orders: 1,
       productsBought: 2,
-      totalSpent: 199.99,
+      totalSpent: 199990, // ₦199,990
       lastPurchase: "2023-05-15",
     },
     {
@@ -109,7 +109,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/28.jpg",
       orders: 9,
       productsBought: 27,
-      totalSpent: 2987.5,
+      totalSpent: 2987500, // ₦2,987,500
       lastPurchase: "2023-06-22",
     },
     {
@@ -119,7 +119,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/42.jpg",
       orders: 3,
       productsBought: 7,
-      totalSpent: 765.3,
+      totalSpent: 765300, // ₦765,300
       lastPurchase: "2023-06-08",
     },
     {
@@ -129,7 +129,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/51.jpg",
       orders: 5,
       productsBought: 11,
-      totalSpent: 1123.45,
+      totalSpent: 1123450, // ₦1,123,450
       lastPurchase: "2023-06-17",
     },
   ]);
@@ -155,11 +155,13 @@ export default function DashboardCustomers() {
     indexOfLastItem
   );
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+  // Format currency in Naira with commas
+  const formatNaira = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
@@ -178,7 +180,7 @@ export default function DashboardCustomers() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto p-4">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold">Customer Dashboard</h1>
         <div className="flex items-center gap-4">
@@ -249,7 +251,7 @@ export default function DashboardCustomers() {
                     {customer.productsBought}
                   </TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(customer.totalSpent)}
+                    {formatNaira(customer.totalSpent)}
                   </TableCell>
                   <TableCell className="text-right">
                     {formatDate(customer.lastPurchase)}
