@@ -124,8 +124,11 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
             }
 
             const data = await response.json();
-            const productPrice = data.message;
+            const productPrice = data.message.basePrice; // need to use discounted price instead
+            console.log({ productPrice })
             const totalAmount = productPrice * 100;
+
+            console.log({ totalAmount })
 
             const paystack = new PaystackPop();
             paystack.newTransaction({
