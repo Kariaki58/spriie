@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { FiPackage, FiCheckCircle, FiTruck, FiClock, FiSearch, FiFilter, FiUser, FiX, FiShoppingBag } from 'react-icons/fi';
+import { FiPackage, FiCheckCircle, FiTruck, FiClock, FiSearch, FiFilter, FiUser, FiX, FiShoppingBag, FiRefreshCw, FiHome, FiMail, FiPhone } from 'react-icons/fi';
 import {
     Dialog,
     DialogContent,
@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useSession } from 'next-auth/react';
 
-type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
 
 interface Order {
     _id: string;
@@ -43,9 +44,11 @@ interface Order {
         email: string;
     };
     cancellationReason?: string;
+    returnReason?: string;
 }
 
 const OrdersManagement = () => {
+    const { data: session } = useSession();
     const [orders, setOrders] = useState<Order[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -72,6 +75,7 @@ const OrdersManagement = () => {
                     paymentMethod: order.paymentMethod,
                     status: order.status,
                     cancellationReason: order.cancellationReason || '',
+                    returnReason: order.returnReason || '',
                     cartItems: order.cartItems.map((item: any) => ({
                         product: {
                             _id: item.productId,
@@ -188,6 +192,8 @@ const OrdersManagement = () => {
                 return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
             case 'cancelled':
                 return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+            case 'returned':
+                return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
             default:
                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
         }
@@ -205,6 +211,8 @@ const OrdersManagement = () => {
                 return <FiCheckCircle className="mr-1" />;
             case 'cancelled':
                 return <FiX className="mr-1" />;
+            case 'returned':
+                return <FiRefreshCw className="mr-1" />;
             default:
                 return null;
         }
@@ -233,7 +241,62 @@ const OrdersManagement = () => {
 
     return (
         <div className="dark:bg-gray-900 min-h-screen">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Seller Session Card */}
+                {session?.user && (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-6">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                            <div className="flex items-center space-x-4">
+                                <div className="flex-shrink-0">
+                                    <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                        <span className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                                            {session.user.name?.charAt(0).toUpperCase()}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                                        {session.user.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        {session.user.email}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <div className="flex items-center space-x-2">
+                                    <FiPackage className="text-gray-400 dark:text-gray-500" />
+                                    <div>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Total Orders</p>
+                                        <p className="text-lg font-medium text-gray-900 dark:text-white">
+                                            {orders.length}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <FiCheckCircle className="text-green-500 dark:text-green-400" />
+                                    <div>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Completed</p>
+                                        <p className="text-lg font-medium text-gray-900 dark:text-white">
+                                            {orders.filter(o => o.status === 'delivered').length}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <FiRefreshCw className="text-purple-500 dark:text-purple-400" />
+                                    <div>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Returns</p>
+                                        <p className="text-lg font-medium text-gray-900 dark:text-white">
+                                            {orders.filter(o => o.status === 'returned').length}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Orders Table */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 md:p-6 mb-6">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                         <div className="relative flex-grow max-w-md">
@@ -259,8 +322,9 @@ const OrdersManagement = () => {
                                 <option value="pending">Pending</option>
                                 <option value="processing">Processing</option>
                                 <option value="shipped">Shipped</option>
-                                <option value="delivered">delivered</option>
+                                <option value="delivered">Delivered</option>
                                 <option value="cancelled">Cancelled</option>
+                                <option value="returned">Returned</option>
                             </select>
                         </div>
                     </div>
@@ -349,6 +413,7 @@ const OrdersManagement = () => {
                     )}
                 </div>
 
+                {/* Order Details Modal */}
                 {isModalOpen && selectedOrder && (
                     <>
                         <div
@@ -424,6 +489,7 @@ const OrdersManagement = () => {
                                                         value={statusUpdate}
                                                         onChange={(e) => setStatusUpdate(e.target.value as OrderStatus)}
                                                         className={`px-3 py-1 inline-flex items-center text-xs leading-4 font-medium rounded-full ${getStatusColor(statusUpdate as OrderStatus)} dark:bg-gray-800 dark:border dark:border-gray-600`}
+                                                        disabled={selectedOrder.status === 'returned'}
                                                     >
                                                         {statusOptions.map((option) => (
                                                             <option key={option.value} value={option.value} className="bg-white dark:bg-gray-800">
@@ -437,6 +503,14 @@ const OrdersManagement = () => {
                                                         <p className="text-sm text-gray-500 dark:text-gray-400">Cancellation Reason</p>
                                                         <p className="text-sm font-medium dark:text-white mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
                                                             {selectedOrder.cancellationReason}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {selectedOrder.status === 'returned' && selectedOrder.returnReason && (
+                                                    <div>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400">Return Reason</p>
+                                                        <p className="text-sm font-medium dark:text-white mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                                                            {selectedOrder.returnReason}
                                                         </p>
                                                     </div>
                                                 )}
@@ -496,21 +570,24 @@ const OrdersManagement = () => {
                                     >
                                         Close
                                     </button>
-                                    <div className="space-x-2">
-                                        <Button 
-                                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                                            onClick={() => handleStatusChange(statusUpdate as OrderStatus)}
-                                            disabled={loading || !statusUpdate || statusUpdate === selectedOrder.status}
-                                        >
-                                            {loading ? "Updating..." : "Update Status"}
-                                        </Button>
-                                    </div>
+                                    {selectedOrder.status !== 'returned' && (
+                                        <div className="space-x-2">
+                                            <Button 
+                                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                                onClick={() => handleStatusChange(statusUpdate as OrderStatus)}
+                                                disabled={loading || !statusUpdate || statusUpdate === selectedOrder.status}
+                                            >
+                                                {loading ? "Updating..." : "Update Status"}
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
                     </>
                 )}
 
+                {/* Pagination */}
                 <div className="flex flex-col sm:flex-row items-center justify-between">
                     <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 sm:mb-0">
                         Showing <span className="font-medium">{filteredOrders.length}</span> of <span className="font-medium">{orders.length}</span> orders
@@ -531,6 +608,7 @@ const OrdersManagement = () => {
                     </div>
                 </div>
 
+                {/* Status Update Confirmation Dialog */}
                 <Dialog open={showDialog} onOpenChange={setShowDialog}>
                     <DialogContent
                         className="sm:max-w-[425px] w-[85%] rounded-xl text-black dark:text-white bg-white dark:bg-gray-800 transition-opacity duration-300"
@@ -565,6 +643,7 @@ const OrdersManagement = () => {
                     </DialogContent>
                 </Dialog>
 
+                {/* Cancellation Dialog */}
                 <Dialog open={showCancellationDialog} onOpenChange={setShowCancellationDialog}>
                     <DialogContent
                         className="sm:max-w-[425px] w-[85%] rounded-xl text-black dark:text-white bg-white dark:bg-gray-800 transition-opacity duration-300"

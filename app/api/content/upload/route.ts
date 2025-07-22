@@ -14,9 +14,8 @@ import { Types } from "mongoose";
 
 export async function GET(req: NextRequest) {
     try {
-        console.log("fireing.")
         const session = await getServerSession(options);
-
+// spriie.vercel.app
 
         if (!session || !session.user) {
             return NextResponse.json(
@@ -47,7 +46,7 @@ export async function GET(req: NextRequest) {
         const findStore = await Store.findOne({
             userId 
         }).populate('products')
-        .populate('comments')
+        // .populate('comments')
 
         if (!findStore) {
             return NextResponse.json(
@@ -61,6 +60,10 @@ export async function GET(req: NextRequest) {
             { status: 200 }
         )   
     } catch (error) {
+        console.log('####################')
+        console.log(error)
+        console.log('####################')
+    
         return NextResponse.json(
             { error: "something went wrong"},
             { status: 500 }

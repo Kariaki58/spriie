@@ -1,27 +1,32 @@
 "use client"
 import { useState } from 'react';
+import { useUserOrders } from '@/hooks/useUserOrders';
 
 type OrderStatus = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+
+type OrderItem = {
+  name: string;
+  quantity: number;
+  price: number;
+  image: string;
+};
+
+type ShippingAddress = {
+  fullName: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  phone: string;
+};
 
 type Order = {
   id: string;
   date: string;
   status: OrderStatus;
   amount: number;
-  items: {
-    name: string;
-    quantity: number;
-    price: number;
-    image: string;
-  }[];
-  shippingAddress: {
-    name: string;
-    street: string;
-    city: string;
-    state: string;
-    country: string;
-    phone: string;
-  };
+  items: OrderItem[];
+  shippingAddress: ShippingAddress;
   paymentMethod: string;
   trackingNumber?: string;
 };
@@ -29,188 +34,7 @@ type Order = {
 const UserOrderDashboard = () => {
   const [activeTab, setActiveTab] = useState<OrderStatus>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: 'SPR-2023-7890',
-      date: 'July 15, 2023',
-      status: 'pending',
-      amount: 87500,
-      paymentMethod: 'Pay on Delivery',
-      items: [
-        {
-          name: 'Wireless Headphones',
-          quantity: 1,
-          price: 35000,
-          image: 'https://placehold.co/80x80?text=Headphones'
-        },
-        {
-          name: 'Phone Case',
-          quantity: 2,
-          price: 5000,
-          image: 'https://placehold.co/80x80?text=Case'
-        }
-      ],
-      shippingAddress: {
-        name: 'John Doe',
-        street: '456 Lekki Phase 1',
-        city: 'Lagos',
-        state: 'Lagos',
-        country: 'Nigeria',
-        phone: '+2348012345678'
-      }
-    },
-    {
-      id: 'SPR-2023-7891',
-      date: 'July 14, 2023',
-      status: 'pending',
-      amount: 125000,
-      paymentMethod: 'Card Payment',
-      items: [
-        {
-          name: 'Smart Watch Pro',
-          quantity: 1,
-          price: 125000,
-          image: 'https://placehold.co/80x80?text=Watch+Pro'
-        }
-      ],
-      shippingAddress: {
-        name: 'John Doe',
-        street: '456 Lekki Phase 1',
-        city: 'Lagos',
-        state: 'Lagos',
-        country: 'Nigeria',
-        phone: '+2348012345678'
-      }
-    },
-    // Processing orders (5)
-    {
-      id: 'SPR-2023-7889',
-      date: 'July 10, 2023',
-      status: 'processing',
-      amount: 120000,
-      paymentMethod: 'Card Payment',
-      items: [
-        {
-          name: 'Smart Watch',
-          quantity: 1,
-          price: 75000,
-          image: 'https://placehold.co/80x80?text=Watch'
-        },
-        {
-          name: 'Fitness Band',
-          quantity: 1,
-          price: 45000,
-          image: 'https://placehold.co/80x80?text=Band'
-        }
-      ],
-      shippingAddress: {
-        name: 'John Doe',
-        street: '456 Lekki Phase 1',
-        city: 'Lagos',
-        state: 'Lagos',
-        country: 'Nigeria',
-        phone: '+2348012345678'
-      }
-    },
-    // Shipped orders (5)
-    {
-      id: 'SPR-2023-7888',
-      date: 'July 5, 2023',
-      status: 'shipped',
-      amount: 250000,
-      paymentMethod: 'Card Payment',
-      trackingNumber: 'SPR123456789',
-      items: [
-        {
-          name: 'Power Generator',
-          quantity: 1,
-          price: 250000,
-          image: 'https://placehold.co/80x80?text=Generator'
-        }
-      ],
-      shippingAddress: {
-        name: 'John Doe',
-        street: '456 Lekki Phase 1',
-        city: 'Lagos',
-        state: 'Lagos',
-        country: 'Nigeria',
-        phone: '+2348012345678'
-      }
-    },
-    // Delivered orders (5)
-    {
-      id: 'SPR-2023-7887',
-      date: 'June 28, 2023',
-      status: 'delivered',
-      amount: 180000,
-      paymentMethod: 'Card Payment',
-      trackingNumber: 'SPR987654321',
-      items: [
-        {
-          name: 'Solar Panel Kit',
-          quantity: 1,
-          price: 180000,
-          image: 'https://placehold.co/80x80?text=Solar'
-        }
-      ],
-      shippingAddress: {
-        name: 'John Doe',
-        street: '456 Lekki Phase 1',
-        city: 'Lagos',
-        state: 'Lagos',
-        country: 'Nigeria',
-        phone: '+2348012345678'
-      }
-    },
-    // Cancelled orders (3)
-    {
-      id: 'SPR-2023-7886',
-      date: 'June 20, 2023',
-      status: 'cancelled',
-      amount: 65000,
-      paymentMethod: 'Card Payment',
-      items: [
-        {
-          name: 'Bluetooth Speaker',
-          quantity: 1,
-          price: 65000,
-          image: 'https://placehold.co/80x80?text=Speaker'
-        }
-      ],
-      shippingAddress: {
-        name: 'John Doe',
-        street: '456 Lekki Phase 1',
-        city: 'Lagos',
-        state: 'Lagos',
-        country: 'Nigeria',
-        phone: '+2348012345678'
-      }
-    },
-    // Returned orders (2)
-    {
-      id: 'SPR-2023-7885',
-      date: 'June 15, 2023',
-      status: 'returned',
-      amount: 45000,
-      paymentMethod: 'Card Payment',
-      items: [
-        {
-          name: 'Wireless Earbuds',
-          quantity: 1,
-          price: 45000,
-          image: 'https://placehold.co/80x80?text=Earbuds'
-        }
-      ],
-      shippingAddress: {
-        name: 'John Doe',
-        street: '456 Lekki Phase 1',
-        city: 'Lagos',
-        state: 'Lagos',
-        country: 'Nigeria',
-        phone: '+2348012345678'
-      }
-    }
-  ]);
+  const { orders, loading, error, cancelOrder, initiateReturn } = useUserOrders();
 
   const filteredOrders = activeTab === 'all' 
     ? orders 
@@ -221,7 +45,7 @@ const UserOrderDashboard = () => {
       style: 'currency',
       currency: 'NGN',
       minimumFractionDigits: 2
-    }).format(amount / 100);
+    }).format(amount);
   };
 
   const getStatusColor = (status: OrderStatus) => {
@@ -243,19 +67,37 @@ const UserOrderDashboard = () => {
     }
   };
 
-  const cancelOrder = (orderId: string) => {
-    setOrders(orders.map(order => 
-      order.id === orderId ? { ...order, status: 'cancelled' } : order
-    ));
-  };
-
-  const initiateReturn = (orderId: string) => {
-    setOrders(orders.map(order => 
-      order.id === orderId ? { ...order, status: 'returned' } : order
-    ));
-  };
-
   const statusTabs: OrderStatus[] = ['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md max-w-md w-full text-center">
+          <div className="text-red-500 dark:text-red-400 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-200 mb-2">Error Loading Orders</h3>
+          <p className="text-gray-600 dark:text-gray-400">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -335,7 +177,7 @@ const UserOrderDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Recipient</p>
-                      <p className="text-gray-800 dark:text-gray-200">{order.shippingAddress.name}</p>
+                      <p className="text-gray-800 dark:text-gray-200">{order.shippingAddress.fullName}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
@@ -344,7 +186,7 @@ const UserOrderDashboard = () => {
                     <div className="md:col-span-2">
                       <p className="text-sm text-gray-500 dark:text-gray-400">Address</p>
                       <p className="text-gray-800 dark:text-gray-200">
-                        {order.shippingAddress.street}, {order.shippingAddress.city}, {order.shippingAddress.state}, {order.shippingAddress.country}
+                        {order.shippingAddress.address}, {order.shippingAddress.city}, {order.shippingAddress.state}, {order.shippingAddress.country}
                       </p>
                     </div>
                     <div>
@@ -477,7 +319,7 @@ const UserOrderDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Recipient</p>
-                      <p className="text-gray-800 dark:text-gray-200">{selectedOrder.shippingAddress.name}</p>
+                      <p className="text-gray-800 dark:text-gray-200">{selectedOrder.shippingAddress.fullName}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
@@ -486,7 +328,7 @@ const UserOrderDashboard = () => {
                     <div className="md:col-span-2">
                       <p className="text-sm text-gray-500 dark:text-gray-400">Address</p>
                       <p className="text-gray-800 dark:text-gray-200">
-                        {selectedOrder.shippingAddress.street}, {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}, {selectedOrder.shippingAddress.country}
+                        {selectedOrder.shippingAddress.address}, {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}, {selectedOrder.shippingAddress.country}
                       </p>
                     </div>
                   </div>
