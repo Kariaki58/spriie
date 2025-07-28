@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import { 
-    Heart, MessageSquare, Bookmark, Share2, 
+    Heart, Bookmark, Share2, 
     Play, Pause, 
     ChevronUp,
     ChevronDown
@@ -118,7 +118,7 @@ export default function ProductScreen({ product, isActive }: any) {
         if (!video) return;
 
         if (isActive && currentMediaIndex === 0) {
-            video.muted = true;
+            // video.muted = true;
             const playPromise = video.play();
             if (playPromise !== undefined) {
             playPromise
@@ -288,7 +288,6 @@ export default function ProductScreen({ product, isActive }: any) {
                                     src={media.url}
                                     className="h-full w-full object-cover"
                                     loop
-                                    muted
                                     playsInline
                                     poster={product.thumbnail}
                                     onPlay={() => setIsPlaying(true)}
@@ -387,7 +386,7 @@ export default function ProductScreen({ product, isActive }: any) {
                         <Link href={session?.user?.id === product.userId._id ? '/profile' : `/profile/${product.userId._id}`}>
 
                             <img 
-                                src={product.userId.avatar} 
+                                src={product.userId.avatar || "/default.jpg"} 
                                 alt="User profile"
                                 // width={100}
                                 // height={100}
