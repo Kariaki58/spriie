@@ -26,12 +26,19 @@ interface User {
   image?: string;
 }
 
+interface Like {
+  _id: string;
+  user: {
+    _id: string;
+  };
+}
+
 interface Comment {
   _id: string;
   user: User;
   content: string;
   createdAt: string;
-  likes: string[];
+  likes: Like[];
   replies: Comment[];
   parentComment?: string;
 }
@@ -42,7 +49,7 @@ interface Review {
   rating: number;
   content: string;
   createdAt: string;
-  likes: string[];
+  likes: Like[];
 }
 
 interface CommentsDrawerProps {
@@ -59,7 +66,7 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   return data;
 }
 
-export default function CommentsDrawer({ productId, commentCount }: CommentsDrawerProps) {
+export default function CommentsDrawer({ productId }: CommentsDrawerProps) {
   const [activeTab, setActiveTab] = useState("comments");
   const [commentInput, setCommentInput] = useState("");
   const [replyInput, setReplyInput] = useState("");
@@ -77,7 +84,7 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
     enabled: !!productId,
   });
 
-  // Mutation for adding a comment
+  // Mutation for adding a comment with optimistic updates
   const addCommentMutation = useMutation({
     mutationFn: async (content: string) => {
       return fetchJson<Comment>(`/api/comments`, {
@@ -92,46 +99,233 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
         }),
       });
     },
-    onSuccess: (newComment) => {
-      queryClient.invalidateQueries({ queryKey: ["comments", productId] });
+    onMutate: async (content) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ['comments', productId] });
+
+      // Snapshot the previous value
+      const previousComments = queryClient.getQueryData<Comment[]>(['comments', productId]);
+
+      // Optimistically update to the new value
+      if (previousComments) {
+        const newComment: Comment = {
+          _id: `temp-${Date.now()}`,
+          user: {
+            _id: session?.user.id || '',
+            name: session?.user.name || 'User',
+            image: session?.user.image || undefined
+          },
+          content,
+          createdAt: new Date().toISOString(),
+          likes: [],
+          replies: [],
+          parentComment: replyingTo || undefined
+        };
+
+        if (replyingTo) {
+          // Add as reply
+          const updatedComments = previousComments.map(comment => {
+            if (comment._id === replyingTo) {
+              return {
+                ...comment,
+                replies: [...comment.replies, newComment]
+              };
+            }
+            return comment;
+          });
+          queryClient.setQueryData(['comments', productId], updatedComments);
+        } else {
+          // Add as top-level comment
+          queryClient.setQueryData(['comments', productId], [newComment, ...previousComments]);
+        }
+      }
+
+      return { previousComments };
+    },
+    onSuccess: (newComment, _, context) => {
+      // Replace optimistic comment with actual data from server
+      const previousComments = context?.previousComments || [];
+      queryClient.setQueryData(['comments', productId], (old: Comment[] | undefined) => {
+        if (!old) return previousComments;
+        
+        return old.map(comment => {
+          // Replace temp comment with real one
+          if (comment._id === `temp-${newComment._id}`) {
+            return newComment;
+          }
+          // Update replies if needed
+          if (comment.replies.some(reply => reply._id.startsWith('temp-'))) {
+            return {
+              ...comment,
+              replies: comment.replies.map(reply => 
+                reply._id.startsWith('temp-') && reply.content === newComment.content 
+                  ? newComment 
+                  : reply
+              )
+            };
+          }
+          return comment;
+        });
+      });
+
       if (replyingTo) {
         setReplyInput("");
       } else {
         setCommentInput("");
       }
       setReplyingTo(null);
-      toast.success("Comment added successfully");
     },
-    onError: (error) => {
+    onError: (error, _, context) => {
+      // Rollback to previous comments if error occurs
+      queryClient.setQueryData(['comments', productId], context?.previousComments);
       toast.error(error.message || "Failed to add comment");
+    },
+    onSettled: () => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['comments', productId] });
     }
   });
 
-  // Mutation for deleting a comment
+  // Mutation for deleting a comment with optimistic updates
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
       await fetch(`/api/comments/${commentId}`, {
         method: "DELETE",
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comments", productId] });
-      toast.success("Comment deleted successfully");
+    onMutate: async (commentId) => {
+      await queryClient.cancelQueries({ queryKey: ['comments', productId] });
+      const previousComments = queryClient.getQueryData<Comment[]>(['comments', productId]);
+
+      if (previousComments) {
+        // Check if it's a top-level comment or reply
+        const isReply = previousComments.some(comment => 
+          comment.replies.some(reply => reply._id === commentId)
+        );
+
+        if (isReply) {
+          // Remove reply from its parent
+          queryClient.setQueryData(['comments', productId], previousComments.map(comment => ({
+            ...comment,
+            replies: comment.replies.filter(reply => reply._id !== commentId)
+          })));
+        } else {
+          // Remove top-level comment
+          queryClient.setQueryData(['comments', productId], previousComments.filter(
+            comment => comment._id !== commentId
+          ));
+        }
+      }
+
+      return { previousComments };
     },
-    onError: () => {
+    onError: (error, _, context) => {
+      queryClient.setQueryData(['comments', productId], context?.previousComments);
       toast.error("Failed to delete comment");
+    },
+    onSuccess: () => {
+      toast.success("Comment deleted successfully");
     }
   });
 
-  // Mutation for liking a comment
+  // Mutation for liking a comment with optimistic updates
   const likeCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
-      await fetch(`/api/comments/${commentId}/like`, {
+      const response = await fetch(`/api/comments/${commentId}/like`, {
         method: "POST",
       });
+      if (!response.ok) {
+        throw new Error('Failed to like comment');
+      }
+      return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comments", productId] });
+    onMutate: async (commentId) => {
+      if (!session?.user.id) return;
+
+      await queryClient.cancelQueries({ queryKey: ['comments', productId] });
+      const previousComments = queryClient.getQueryData<Comment[]>(['comments', productId]);
+
+      if (previousComments) {
+        // Check if user already liked this comment
+        const isLiked = previousComments.some(comment => {
+          if (comment._id === commentId) {
+            return comment.likes.some(like => like.user._id === session.user.id);
+          }
+          return comment.replies.some(reply => {
+            if (reply._id === commentId) {
+              return reply.likes.some(like => like.user._id === session.user.id);
+            }
+            return false;
+          });
+        });
+
+        // Toggle like status
+        queryClient.setQueryData(['comments', productId], previousComments.map(comment => {
+          // Update top-level comment
+          if (comment._id === commentId) {
+            return {
+              ...comment,
+              likes: isLiked
+                ? comment.likes.filter(like => like.user._id !== session.user.id)
+                : [...comment.likes, { _id: `temp-like-${Date.now()}`, user: { _id: session.user.id } }]
+            };
+          }
+          // Update replies
+          return {
+            ...comment,
+            replies: comment.replies.map(reply => {
+              if (reply._id === commentId) {
+                return {
+                  ...reply,
+                  likes: isLiked
+                    ? reply.likes.filter(like => like.user._id !== session.user.id)
+                    : [...reply.likes, { _id: `temp-like-${Date.now()}`, user: { _id: session.user.id } }]
+                };
+              }
+              return reply;
+            })
+          };
+        }));
+      }
+
+      return { previousComments };
+    },
+    onError: (error, _, context) => {
+      queryClient.setQueryData(['comments', productId], context?.previousComments);
+      toast.error(error.message || "Failed to like comment");
+    },
+    onSuccess: (data, commentId) => {
+      // Replace temporary like with server response if needed
+      queryClient.setQueryData(['comments', productId], (old: Comment[] | undefined) => {
+        if (!old) return old;
+        return old.map(comment => {
+          if (comment._id === commentId) {
+            return {
+              ...comment,
+              likes: comment.likes.map(like => 
+                like._id.startsWith('temp-like-') ? data.like : like
+              ).filter(Boolean)
+            };
+          }
+          return {
+            ...comment,
+            replies: comment.replies.map(reply => {
+              if (reply._id === commentId) {
+                return {
+                  ...reply,
+                  likes: reply.likes.map(like => 
+                    like._id.startsWith('temp-like-') ? data.like : like
+                  ).filter(Boolean)
+                };
+              }
+              return reply;
+            })
+          };
+        });
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', productId] });
     }
   });
 
@@ -177,6 +371,11 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
       return;
     }
     likeCommentMutation.mutate(commentId);
+  };
+
+  const hasLiked = (likes: Like[]) => {
+    if (!session?.user?.id) return false;
+    return likes.some(like => like.user._id === session.user.id);
   };
 
   const formatDate = (dateString: string) => {
@@ -265,6 +464,7 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                     <div key={comment._id} className="border-b border-gray-200 dark:border-gray-700 pb-4">
                       <div className="flex gap-3">
                         <Avatar className="h-10 w-10">
+                          <AvatarImage src={comment.user.image} />
                           <AvatarFallback>{comment.user.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
@@ -279,10 +479,11 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                             <button 
                               className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
                               onClick={() => handleLikeComment(comment._id)}
+                              disabled={likeCommentMutation.isPending}
                             >
                               <Heart 
                                 size={14} 
-                                className={comment.likes.includes(session?.user.id as string) ? 
+                                className={hasLiked(comment.likes) ? 
                                   "fill-red-500 text-red-500" : ""} 
                               />
                               ({comment.likes.length})
@@ -297,6 +498,7 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                               <button 
                                 className="text-xs text-red-500 hover:text-red-700"
                                 onClick={() => handleDeleteComment(comment._id)}
+                                disabled={deleteCommentMutation.isPending}
                               >
                                 Delete
                               </button>
@@ -310,7 +512,7 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                             >
                               <div className="flex gap-2">
                                 <Textarea
-                                  placeholder={`Replying to ${comment.userId.name}...`}
+                                  placeholder={`Replying to ${comment.user.name}...`}
                                   value={replyInput}
                                   onChange={(e) => setReplyInput(e.target.value)}
                                   className="flex-1 min-h-[40px] text-sm"
@@ -346,10 +548,11 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                                       <button 
                                         className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
                                         onClick={() => handleLikeComment(reply._id)}
+                                        disabled={likeCommentMutation.isPending}
                                       >
                                         <Heart 
                                           size={12} 
-                                          className={reply.likes.includes(session?.user.id as string) ? 
+                                          className={hasLiked(reply.likes) ? 
                                             "fill-red-500 text-red-500" : ""} 
                                         />
                                         ({reply.likes.length})
@@ -358,6 +561,7 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                                         <button 
                                           className="text-xs text-red-500 hover:text-red-700"
                                           onClick={() => handleDeleteComment(reply._id)}
+                                          disabled={deleteCommentMutation.isPending}
                                         >
                                           Delete
                                         </button>
@@ -451,10 +655,12 @@ export default function CommentsDrawer({ productId, commentCount }: CommentsDraw
                         <div className="mt-2">
                           <button 
                             className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1"
+                            onClick={() => handleLikeComment(review._id)}
+                            disabled={likeCommentMutation.isPending}
                           >
                             <Heart 
                               size={14} 
-                              className={review.likes.includes(session?.user.id as string) ? 
+                              className={hasLiked(review.likes) ? 
                                 "fill-red-500 text-red-500" : ""} 
                             />
                             Helpful ({review.likes.length})

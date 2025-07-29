@@ -5,6 +5,8 @@ import AuthProvider from "./AuthProvider";
 import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "@/components/app-ui/QueryClientProvider";
 import { Analytics } from "@vercel/analytics/next"
+import { CartProvider } from "@/components/cart/cart-provider";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +36,9 @@ export default function RootLayout({
         <Analytics/>
         <Providers>
           <AuthProvider>
-            {children}
+            <CartProvider>
+              {children}
+            </CartProvider>
           </AuthProvider>
         </Providers>
         <Toaster />

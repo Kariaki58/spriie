@@ -80,6 +80,8 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
 
         const userId = session.user?.id;
+        console.log(userId)
+        console.log(session)
         if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
             return NextResponse.json(
                 { error: "Invalid user ID" },
@@ -178,6 +180,17 @@ export async function POST(req: NextRequest) {
         // Update user role to seller
         user.role = "seller";
         await user.save();
+
+        const updatedToken = {
+            ...session, 
+            user: {
+                ...session.user,
+                role: "seller", // Update the role
+                // Add any additional store-related info you want in the session
+                storeId: newStore._id.toString(),
+                storeName: newStore.storeName
+            }
+        };
 
         return NextResponse.json(
             { 

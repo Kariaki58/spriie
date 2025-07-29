@@ -23,46 +23,46 @@ export interface IOrder extends Document {
 const OrderSchema = new mongoose.Schema(
     {
         userId: {
-            type: mongoose.Types.ObjectId,
-            required: true,
-            ref: "User",
+          type: mongoose.Types.ObjectId,
+          required: true,
+          ref: "User",
         },
 
         storeId: {
-            type: mongoose.Types.ObjectId,
-            required: true,
-            ref: "Store",
+          type: mongoose.Types.ObjectId,
+          required: true,
+          ref: "Store",
         },
         cancellationReason: {
-            type: String,
+          type: String,
         },
         cartItems: {
-            type: [
-                {
-                    productId: { type: mongoose.Types.ObjectId, required: true, ref: "Product" },
-                    name: { type: String, required: true },
-                    quantity: { type: Number, required: true, min: 1 },
-                    size: { type: String },
-                    color: { type: String },
-                    price: { type: Number, required: true, min: 0 },
-                },
-            ],
-            required: true,
+          type: [
+            {
+              productId: { type: mongoose.Types.ObjectId, required: true, ref: "Product" },
+              name: { type: String, required: true },
+              quantity: { type: Number, required: true, min: 1 },
+              size: { type: String },
+              color: { type: String },
+              price: { type: Number, required: true, min: 0 },
+            },
+          ],
+          required: true,
         },
         status: {
-            type: String,
-            required: true,
-            enum: ["pending", "processing", "shipped", "delivered", "cancelled", "returned"],
-            default: "pending",
+          type: String,
+          required: true,
+          enum: ["pending", "processing", "shipped", "delivered", "cancelled", "returned"],
+          default: "pending",
         },
         shippingAddress: {
-            type: Schema.Types.Mixed,
-            required: true,
+          type: Schema.Types.Mixed,
+          required: true,
         },
         paymentMethod: {
-            type: String,
-            required: true,
-            enum: ["credit_card", "paypal", "bank_transfer", "cash_on_delivery", "paystack"],
+          type: String,
+          required: true,
+          enum: ["wallet", "bank_transfer", "cash_on_delivery", "paystack"],
         },
     },
     {

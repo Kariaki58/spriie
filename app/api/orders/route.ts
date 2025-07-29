@@ -26,8 +26,9 @@ export async function GET(req: NextRequest) {
     }
 
     if (session.user.role !== "seller") {
+      console.log("second next seller")
       return NextResponse.json(
-        { erro: "you are not a seller" },
+        { error: "you are not a seller" },
         { status: 400 }
       )
     }
@@ -51,6 +52,8 @@ export async function GET(req: NextRequest) {
 
     const store = await Store.findOne({ userId: user._id })
 
+    console.log({store})
+
     if (!store) {
       return NextResponse.json(
         { error: "you don not have a store " },
@@ -61,11 +64,6 @@ export async function GET(req: NextRequest) {
     const orders = await Order.find({ storeId: store._id })
     .populate('userId')
     .populate('cartItems.productId');
-    console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-    console.log({orders})
-    console.log('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-
-
 
     return NextResponse.json(orders);
   } catch (error: any) {
@@ -133,6 +131,8 @@ export async function POST(req: NextRequest) {
       products: new mongoose.Types.ObjectId(dbProduct._id),
     });
 
+    console.log(storeWithProduct)
+
 
     if (!storeWithProduct) {
       return NextResponse.json(
@@ -145,6 +145,28 @@ export async function POST(req: NextRequest) {
 
     console.log({ dbProduct })
 
+    const totalCost = qty * product.basePrice;
+
+    const userWithStore = await User.findOne({ _id: storeWithProduct.userId })
+
+    if (paymentMethod === "wallet") {
+      if (user.wallet < totalCost) {
+        return NextResponse.json(
+          { error: "Insufficient wallet balance"},
+          { status: 400 }
+        )
+      }
+
+      user.wallet -= totalCost;
+      userWithStore.wallet += totalCost;
+      await user.save();
+    }
+    if (paymentMethod == "paystack") {
+      userWithStore.wallet += totalCost;
+    }
+
+    await userWithStore.save();
+
 
     // Create order in database (pending status)
     const order = new Order({
@@ -153,8 +175,8 @@ export async function POST(req: NextRequest) {
       cartItems: [
         {
           productId: dbProduct._id,
-          storeId: storeWithProduct._id, // Added storeId to cartItem as required by interface
-          name: dbProduct.title, // Using the name from the database product
+          storeId: storeWithProduct._id,
+          name: dbProduct.title,
           quantity: qty,
           price: product.basePrice,
         },
@@ -179,11 +201,12 @@ export async function POST(req: NextRequest) {
 
     const transactionDb = new Transaction({
       userId: user._id,
-      storeId: order.storeId, // Changed from order._id to order.storeId
+      storeId: order.storeId,
       reference: reference,
       status: "paid",
       transaction: transaction,
-      trxef: trxref, // Fixed typo (was trxef)
+      trxef: trxref,
+      paymentMethod
     });
 
     await transactionDb.save();

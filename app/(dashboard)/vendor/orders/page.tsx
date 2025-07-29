@@ -67,6 +67,10 @@ const OrdersManagement = () => {
                     method: 'GET'
                 });
                 const data = await response.json();
+
+                console.log("response...")
+                console.log(data)
+                console.log("ending....")
                 
                 const transformedOrders = data.map((order: any, index: number) => ({
                     _id: order._id,
@@ -573,7 +577,7 @@ const OrdersManagement = () => {
                                     {selectedOrder.status !== 'returned' && (
                                         <div className="space-x-2">
                                             <Button 
-                                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                                 onClick={() => handleStatusChange(statusUpdate as OrderStatus)}
                                                 disabled={loading || !statusUpdate || statusUpdate === selectedOrder.status}
                                             >

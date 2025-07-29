@@ -72,8 +72,8 @@ export default function ProfilePage() {
           comments: item.reviews?.length || 0,
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
-          isPrivate: Math.random() > 0.7, // 30% chance of being private
-          isRepost: Math.random() > 0.8 // 20% chance of being repost
+          isPrivate: Math.random() > 0.7,
+          isRepost: Math.random() > 0.8
         }));
         
         setMockContent(transformedData);

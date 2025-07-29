@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import User from "@/models/user";
 import bcrypt from "bcryptjs";
 import connectToDatabase from "@/lib/mongoose";
+import Store from "@/models/store";
 
 type Credentials = {
     email: string;
@@ -39,10 +40,6 @@ export const options: NextAuthOptions = {
                     await connectToDatabase();
                     let userRole = "buyer";
 
-                    if (profile?.email === process.env.ADMIN_EMAIL) { //check the database instead.
-                        userRole = "seller";
-                    }
-
                     let user = await User.findOne({ email: profile?.email }).exec();
 
                     if (!user) {
@@ -55,6 +52,12 @@ export const options: NextAuthOptions = {
                             role: userRole,
                             authMethod: "google",
                         });
+                    } else {
+                        const store = await Store.findOne({ userId: user._id })
+
+                        if (store) {
+                            userRole = "seller";
+                        }
                     }
 
                     if (user.authMethod !== "google") {
@@ -86,25 +89,17 @@ export const options: NextAuthOptions = {
 
                 try {
                     await connectToDatabase();
-                    // let userRole = "buyer";
-                    
-                    // if (credentials.email === process.env.ADMIN_EMAIL) {
-                    //     userRole = "seller";
-                    // }
 
                     const user = await User.findOne({ email: credentials.email }).exec();
 
                     if (!user) {
                         return null;
-                    } else {
-                        if (user.authMethod === "email") {
-                            const match = await bcrypt.compare(credentials.password, user.password);
-                            if (!match) {
-                                return null;
-                            }
-                        } else {
-                            return null;
-                        }
+                    }
+
+                    const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+
+                    if (!isPasswordValid) {
+                        return null;
                     }
 
                     return {
@@ -114,9 +109,10 @@ export const options: NextAuthOptions = {
                         role: user.role,
                     };
                 } catch (error) {
-                    console.log(error);
+                    console.error("Authorization error:", error);
                     return null;
                 }
+
             },
         }),
     ],
@@ -124,8 +120,12 @@ export const options: NextAuthOptions = {
         signIn: "/auth/login",
     },
     callbacks: {
-        async jwt({ token, user }) {
-            if (user) {
+        async jwt({ token, user, trigger, session }) {
+            if (trigger === "update" && session?.user) {
+                console.log("Session update triggered");
+                token.role = session.user.role;
+            }
+            else if (user) {
                 const customUser = user as { id: string; role: string };
                 token.role = customUser.role;
                 token.id = customUser.id;

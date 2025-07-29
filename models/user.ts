@@ -22,6 +22,10 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    wallet: {
+        type: Number,
+        default: 0
+    },
     email: {
         type: String,
         required: true,
@@ -32,7 +36,8 @@ const UserSchema = new mongoose.Schema({
     },
     googleId: {
         type: String,
-        unique: true
+        unique: true,
+        sparse: true
     },
     authMethod: {
         type: String,

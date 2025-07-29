@@ -23,14 +23,14 @@ const CartSchema = new mongoose.Schema({
                 required: true,
                 ref: "Store",
             },
+            storeName: {
+                type: String,
+                required: true
+            },
             productId: {
                 type: mongoose.Types.ObjectId,
                 required: true,
                 ref: "Product",
-            },
-            name: {
-                type: String,
-                required: true,
             },
             size: String,
             color: String,
@@ -56,6 +56,15 @@ const CartSchema = new mongoose.Schema({
         default: 0,
     },
 }, { timestamps: true });
+
+
+CartSchema.pre("save", function (next) {
+  this.cartItems.forEach(item => {
+    item.totalPrice = item.price * item.quantity;
+  });
+  next();
+});
+
 
 
 const Cart = mongoose.models.Cart || mongoose.model<ICart>("Cart", CartSchema);

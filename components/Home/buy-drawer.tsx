@@ -13,8 +13,11 @@ import {
     Mail,
     User,
     Phone,
-    Banknote
+    Banknote,
+    Wallet,
+    EyeOff
 } from 'lucide-react';
+import { useCartStore } from '@/stores/cart-store';
 import {
   Drawer,
   DrawerClose,
@@ -25,11 +28,11 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BuyDrawerProps } from './ProductScreen';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 
 interface CheckoutFormData {
     fullName: string;
@@ -51,6 +54,18 @@ interface PaystackTransaction {
     transaction: string;
 }
 
+interface ICartItem {
+  storeId: string;
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  totalPrice: number;
+  size?: string;
+  color?: string;
+  thumbnail?: string;
+}
+
 interface PaystackPop {
     newTransaction: (options: {
         key: string;
@@ -62,11 +77,11 @@ interface PaystackPop {
 }
 
 export default function BuyDrawer({ product, showFullDescription, toggleDescription, setQty, qty }: BuyDrawerProps) {
-
     function formatNumberWithCommas(number: number | string) {
         return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
+    const { data: session } = useSession();
     const [isCheckout, setIsCheckout] = useState<boolean>(false);
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
     const [isMounted, setIsMounted] = useState<boolean>(false);
@@ -81,12 +96,33 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
         zipCode: '',
         country: ''
     });
-
+    const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'wallet'>('paystack');
+    const [walletBalance, setWalletBalance] = useState<number>(0);
+    const [balanceVisible, setBalanceVisible] = useState(false);
+    const { addToCart: addToCartStore, cartItems } = useCartStore();
     const router = useRouter();
-    const subtotal = isMounted ? 100 : 0;
-    const shipping = 3000;
-    const total = subtotal + shipping;
-    
+
+    const totalAmount = product.basePrice * qty;
+    const canPayWithWallet = walletBalance >= totalAmount;
+    const remainingBalance = totalAmount - walletBalance;
+
+    useEffect(() => {
+        const fetchWalletBalance = async () => {
+            if (!session?.user?.id) return;
+            
+            try {
+                const res = await fetch('/api/profile', {
+                    method: 'GET',
+                });
+                const data = await res.json();
+                setWalletBalance(data.message?.wallet || 0);
+            } catch (error) {
+                console.error('Failed to fetch wallet balance:', error);
+            }
+        };
+
+        fetchWalletBalance();
+    }, [session]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -96,90 +132,132 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
         }));
     };
 
-    const handleAddToCart = () => {
-        console.log("handle add to cart")
-    }
+    const handleAddToCart = async () => {
+        try {
+            const cartItem: ICartItem = {
+                storeId: product.storeId,
+                productId: product._id,
+                name: product.name,
+                price: product.basePrice,
+                quantity: qty,
+                totalPrice: product.basePrice * qty,
+            };
+
+            addToCartStore(cartItem);
+
+            const response = await fetch('/api/cart', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    cartItems: [...cartItems, cartItem]
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update cart on server');
+            }
+
+            toast.success('Product added to cart');
+        } catch (error: any) {
+            useCartStore.getState().removeFromCart(product._id);
+            toast.error(error.message || 'Failed to add to cart');
+        }
+    };
 
     const handlePlaceOrder = async () => {
-        if (!PaystackPop) {
-            toast("Payment SDK not loaded. Please try again.");
-            return;
-        }
-
         if (!formData.email) {
-            toast("Please provide your email address");
+            toast.error("Please provide your email address");
             return;
         }
 
         setIsProcessing(true);
 
         try {
-            // Fetch the latest product price
-            const response = await fetch(`/api/product/${product._id}`, {
-                method: 'GET'
-            });
+            if (paymentMethod === 'paystack') {
+                if (!PaystackPop) {
+                    throw new Error("Payment SDK not loaded");
+                }
 
-            if (!response.ok) {
-                throw new Error("Failed to fetch product price.");
-            }
+                const paystack = new PaystackPop();
+                paystack.newTransaction({
+                    key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+                    email: formData.email,
+                    amount: totalAmount * 100, // Convert to kobo
+                    onSuccess: async (transaction: PaystackTransaction) => {
+                        try {
+                            const response = await fetch('/api/orders', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    reference: transaction.reference,
+                                    trxref: transaction.trxref,
+                                    transaction: transaction.transaction,
+                                    customer: formData,
+                                    qty,
+                                    paymentMethod: 'paystack',
+                                    currency: 'NGN',
+                                    product
+                                }),
+                            });
 
-            const data = await response.json();
-            const productPrice = data.message.basePrice; // need to use discounted price instead
-            console.log({ productPrice })
-            const totalAmount = productPrice * 100;
+                            const order = await response.json();
 
-            console.log({ totalAmount })
+                            if (!response.ok) {
+                                throw new Error(order.message || "Order creation failed");
+                            }
 
-            const paystack = new PaystackPop();
-            paystack.newTransaction({
-                key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
-                email: formData.email,
-                amount: totalAmount,
-                onSuccess: async (transaction: PaystackTransaction) => {
-                    try {
-                        const response = await fetch('/api/orders', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                reference: transaction.reference,
-                                trxref: transaction.trxref,
-                                transaction: transaction.transaction,
-                                customer: formData,
-                                qty,
-                                paymentMethod: 'paystack',
-                                currency: 'NGN',
-                                product
-                            }),
-                        });
-
-                        const order = await response.json();
-
-                        if (!response.ok) {
-                            throw new Error(order.message || "Order creation failed");
+                            toast.success(order.message);
+                        } catch (error: any) {
+                            console.error(error);
+                            toast.error(error.message || "Something went wrong during order creation");
+                        } finally {
+                            setIsProcessing(false);
                         }
-
-                        toast(order.message);
-                    } catch (error: any) {
-                        console.error(error);
-                        toast(error.message || "Something went wrong during order creation");
-                    } finally {
+                    },
+                    onCancel: () => {
                         setIsProcessing(false);
-                    }
-                },
-                onCancel: () => {
-                    setIsProcessing(false);
-                    toast("Payment was cancelled");
-                },
-            });
+                        toast.info("Payment was cancelled");
+                    },
+                });
+            } else if (paymentMethod === 'wallet') {
+                if (!canPayWithWallet) {
+                    throw new Error("Insufficient wallet balance");
+                }
+
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        customer: formData,
+                        qty,
+                        paymentMethod: 'wallet',
+                        currency: 'NGN',
+                        product
+                    }),
+                });
+
+                const order = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(order.message || "Order creation failed");
+                }
+
+                // Update local wallet balance
+                setWalletBalance(prev => prev - totalAmount);
+                toast.success(order.message);
+            }
         } catch (error: any) {
             console.error(error);
-            toast(error.message || "Something went wrong");
+            toast.error(error.message || "Something went wrong");
             setIsProcessing(false);
         }
     };
-
 
     useEffect(() => {
         setIsMounted(true);
@@ -191,9 +269,6 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
     if (!isMounted) {
         return null;
     }
-
-
-
 
     return (
         <Drawer>
@@ -223,8 +298,6 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
 
                         <div className="flex gap-4 items-center border border-gray-200 dark:border-gray-700 p-4 rounded-xl bg-white dark:bg-gray-800 my-4 shadow-sm">
                             <img
-                                // width={80}
-                                // height={80}
                                 src={product.thumbnail}
                                 alt={product.name}
                                 className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
@@ -302,7 +375,10 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                                     <CreditCard className="w-5 h-5" />
                                     Proceed to Checkout
                                 </button>
-                                <button className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-xl font-semibold transition-all shadow-md">
+                                <button 
+                                    onClick={handleAddToCart} 
+                                    className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-xl font-semibold transition-all shadow-md"
+                                >
                                     <ShoppingCart className="w-5 h-5" />
                                     Add to Cart
                                 </button>
@@ -437,46 +513,136 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                         <div className="mb-6">
                             <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Payment Method</h3>
                             <div className="space-y-3">
-                                <div className="flex items-center gap-3 p-3 border border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                                    <input
-                                        type="radio"
-                                        id="paystack"
-                                        name="paymentMethod"
-                                        checked
-                                        readOnly
-                                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
-                                    />
-                                    <label htmlFor="paystack" className="flex items-center gap-2 cursor-pointer">
+                                <button
+                                    onClick={() => setPaymentMethod('paystack')}
+                                    className={`w-full flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                                        paymentMethod === 'paystack'
+                                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                                            : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
                                         <CreditCard className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                                         <span className="text-gray-700 dark:text-gray-300">Paystack</span>
-                                    </label>
+                                    </div>
+                                    {paymentMethod === 'paystack' && (
+                                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                                        </div>
+                                    )}
+                                </button>
+
+                                <div
+                                    onClick={() => setPaymentMethod('wallet')}
+                                    className={`w-full flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                                        paymentMethod === 'wallet'
+                                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                                            : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Wallet className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                                        <div>
+                                            <span className="text-gray-700 dark:text-gray-300">Wallet</span>
+                                            <div className="flex items-center gap-1 text-sm">
+                                                <span className="text-gray-500 dark:text-gray-400">Balance:</span>
+                                                <div className="flex items-center">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setBalanceVisible(!balanceVisible);
+                                                        }}
+                                                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                                                    >
+                                                        {balanceVisible ? (
+                                                            <span>₦{formatNumberWithCommas(walletBalance.toFixed(2))}</span>
+                                                        ) : (
+                                                            <span>•••••••</span>
+                                                        )}
+                                                    </button>
+                                                    {balanceVisible ? (
+                                                        <EyeOff 
+                                                            size={16} 
+                                                            className="ml-1 text-emerald-600 dark:text-emerald-400 cursor-pointer"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setBalanceVisible(false);
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <Eye 
+                                                            size={16} 
+                                                            className="ml-1 text-emerald-600 dark:text-emerald-400 cursor-pointer"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setBalanceVisible(true);
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {paymentMethod === 'wallet' && (
+                                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                                        </div>
+                                    )}
                                 </div>
+
+                                {paymentMethod === 'wallet' && (
+                                    <div className={`p-3 rounded-lg ${
+                                        canPayWithWallet 
+                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                                            : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
+                                    }`}>
+                                        {canPayWithWallet ? (
+                                            <p className="text-sm">Your wallet balance is sufficient for this purchase</p>
+                                        ) : (
+                                            <p className="text-sm">
+                                                You need ₦{formatNumberWithCommas(remainingBalance.toFixed(2))} more to complete this purchase
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
                             <div className="flex justify-between items-center text-lg font-bold">
                                 <span className="text-gray-700 dark:text-gray-300">Total</span>
-                                <span className="text-emerald-600">₦{formatNumberWithCommas((product.basePrice * qty).toFixed(2))}</span>
+                                <span className="text-emerald-600">₦{formatNumberWithCommas(totalAmount.toFixed(2))}</span>
                             </div>
                         </div>
 
                         <DrawerFooter className="px-0">
                             <DrawerClose asChild>
-                                    <button 
-                                        onClick={handlePlaceOrder}
-                                        disabled={isProcessing}
-                                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white p-3 rounded-xl font-semibold transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
-                                    >
-                                        {isProcessing ? (
-                                            <span>Processing...</span>
-                                        ) : (
-                                            <>
+                                <button 
+                                    onClick={handlePlaceOrder}
+                                    disabled={isProcessing || (paymentMethod === 'wallet' && !canPayWithWallet)}
+                                    className={`w-full flex items-center justify-center gap-2 text-white p-3 rounded-xl font-semibold transition-all shadow-md ${
+                                        isProcessing || (paymentMethod === 'wallet' && !canPayWithWallet)
+                                            ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
+                                            : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+                                    }`}
+                                >
+                                    {isProcessing ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            {paymentMethod === 'paystack' ? (
                                                 <CreditCard className="w-5 h-5" />
-                                                Complete Payment
-                                            </>
-                                        )}
-                                    </button>
+                                            ) : (
+                                                <Wallet className="w-5 h-5" />
+                                            )}
+                                            Complete Payment
+                                        </>
+                                    )}
+                                </button>
                             </DrawerClose>
                             
                             <DrawerClose asChild>

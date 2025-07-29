@@ -31,19 +31,40 @@ export async function GET(req: NextRequest) {
 
     console.log("commentDisplay..................")
 
-    const comments = await Comment.find({ product: productId, parentComment: { $exists: false } })
-      .populate({
+    const comments = await Comment.find({ 
+      product: productId, 
+      parentComment: { $exists: false } 
+    })
+    .populate({
+      path: "user",
+      select: "name image"
+    })
+    .populate({
+      path: "likes",
+      select: "user",
+      populate: {
         path: "user",
-        select: "name image"
-      })
-      .populate({
-        path: "replies",
-        populate: {
+        select: "_id"
+      }
+    })
+    .populate({
+      path: "replies",
+      populate: [
+        {
           path: "user",
           select: "name image"
+        },
+        {
+          path: "likes",
+          select: "user",
+          populate: {
+            path: "user",
+            select: "_id"
+          }
         }
-      })
-      .sort({ createdAt: -1 });
+      ]
+    })
+    .sort({ createdAt: -1 });
 
     console.log({comments})
     console.log("commentDisplay..................")

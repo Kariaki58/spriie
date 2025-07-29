@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { useSession } from 'next-auth/react'
 
 interface NavItem {
     href: string
@@ -21,6 +22,7 @@ export default function DashboardSidebar({ config }: { config: SidebarConfig }) 
     const [isCollapsed, setIsCollapsed] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [isMounted, setIsMounted] = useState(false)
+    const { data: session } = useSession()
 
     useEffect(() => {
         setIsMounted(true)
@@ -106,14 +108,14 @@ export default function DashboardSidebar({ config }: { config: SidebarConfig }) 
                         {!isCollapsed && (
                             <Link href="/" className="flex items-center space-x-2">
                                 <div className="relative h-10 w-10">
-                                                                                                                    <Image
-                                                                                                                        src="/sprii-logo-dark.png"
-                                                                                                                        alt="Spriie Logo"
-                                                                                                                        fill
-                                                                                                                        className="object-contain"
-                                                                                                                        priority
-                                                                                                                    />
-                                                                                                               </div>
+                                    <Image
+                                        src="/sprii-logo-dark.png"
+                                        alt="Spriie Logo"
+                                        fill
+                                        className="object-contain"
+                                        priority
+                                    />
+                                </div>
                                 <span className="font-semibold text-lg text-gray-900 dark:text-white">
                                     Spriie
                                 </span>
@@ -136,34 +138,42 @@ export default function DashboardSidebar({ config }: { config: SidebarConfig }) 
                     </div>
                     <nav className="flex-1">
                         <ul className="space-y-1">
-                            {config.navItems.map((item) => (
-                                <li key={item.href}>
-                                    <Link
-                                        href={item.href}
-                                        className={`
-                                            flex items-center p-3 rounded-lg transition-colors
-                                            ${isActive(item.href)
-                                                ? 'bg-emerald-50 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300'
-                                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                            }
-                                            ${isCollapsed ? 'justify-center' : ''}
-                                        `}
-                                    >
-                                        <span className={`
-                                            flex items-center justify-center w-5 h-5
-                                            ${isActive(item.href) 
-                                                ? 'text-emerald-600 dark:text-emerald-300'
-                                                : 'text-gray-500 dark:text-gray-400'
-                                            }
-                                        `}>
-                                            {item.icon}
-                                        </span>
-                                        {!isCollapsed && (
-                                            <span className="ml-3 font-medium">{item.label}</span>
-                                        )}
-                                    </Link>
-                                </li>
-                            ))}
+                            {config.navItems.map((item) => {
+                                    if (item.href === "/vendor" && session?.user.role !== "seller") {
+                                        return null;
+                                    } else if (item.href === "/store" && session?.user.role === "seller") {
+                                        
+                                    } else {
+                                        return <li key={item.href}>
+                                            <Link
+                                                href={item.href}
+                                                className={`
+                                                    flex items-center p-3 rounded-lg transition-colors
+                                                    ${isActive(item.href)
+                                                        ? 'bg-emerald-50 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300'
+                                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                    }
+                                                    ${isCollapsed ? 'justify-center' : ''}
+                                                `}
+                                            >
+                                                <span className={`
+                                                    flex items-center justify-center w-5 h-5
+                                                    ${isActive(item.href) 
+                                                        ? 'text-emerald-600 dark:text-emerald-300'
+                                                        : 'text-gray-500 dark:text-gray-400'
+                                                    }
+                                                `}>
+                                                    {item.icon}
+                                                </span>
+                                                {!isCollapsed && (
+                                                    <span className="ml-3 font-medium">{item.label}</span>
+                                                )}
+                                            </Link>
+                                        </li>
+                                    }
+                                }
+                                
+                            )}
                         </ul>
                     </nav>
 

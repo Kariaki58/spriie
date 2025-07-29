@@ -118,7 +118,7 @@ export default function ProductScreen({ product, isActive }: any) {
         if (!video) return;
 
         if (isActive && currentMediaIndex === 0) {
-            // video.muted = true;
+            video.muted = true;
             const playPromise = video.play();
             if (playPromise !== undefined) {
             playPromise
@@ -288,6 +288,7 @@ export default function ProductScreen({ product, isActive }: any) {
                                     src={media.url}
                                     className="h-full w-full object-cover"
                                     loop
+                                    muted
                                     playsInline
                                     poster={product.thumbnail}
                                     onPlay={() => setIsPlaying(true)}

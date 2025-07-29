@@ -32,6 +32,7 @@ import { useState } from "react"
 import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 const faqSchema = z.object({
   question: z.string().min(5, {
@@ -135,17 +136,30 @@ export default function CreateStore() {
     },
   })
 
+
   const [expandedFaqs, setExpandedFaqs] = useState<number[]>([])
   const [submiting, setSubmiting] = useState<boolean>(false);
+  const { data: session, update } = useSession();
 
   const router = useRouter();
 
+  const test = () => {
+    console.log(session?.user.role);
+  }
   const toggleFaq = (index: number) => {
     setExpandedFaqs(prev =>
       prev.includes(index)
         ? prev.filter(i => i !== index)
         : [...prev, index]
     )
+  }
+
+  async function updateSession() {
+    await update({
+      user: {
+        role: "seller",
+      },
+    })
   }
 
   const addNewFaq = () => {
@@ -189,7 +203,7 @@ export default function CreateStore() {
       const data = await response.json()
 
       toast(data.message)
-
+      updateSession();
       setTimeout(() => {
         router.push("/vendor")
       }, 2000)
@@ -319,7 +333,7 @@ export default function CreateStore() {
                                 <Select
                                     onValueChange={(value) => {
                                         if (!field.value.includes(value)) {
-                                            field.onChange([...field.value, value])
+                                          field.onChange([...field.value, value])
                                         }
                                     }}
                                 >
@@ -811,6 +825,9 @@ export default function CreateStore() {
           </form>
         </Form>
       </div>
+      <Button onClick={test}>
+        Test session
+      </Button>
     </main>
   )
 }

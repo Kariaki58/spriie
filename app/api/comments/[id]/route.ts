@@ -4,6 +4,7 @@ import Comment from "@/models/comments";
 import { getServerSession } from "next-auth";
 import { options } from "../../auth/options";
 
+
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(options);
   
@@ -17,7 +18,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   try {
     await connectToDatabase();
     
-    const commentId = params.id;
+    const commentId = (await params).id;
     const comment = await Comment.findById(commentId);
     
     if (!comment) {
@@ -27,7 +28,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       );
     }
 
-    // Check if the user is the owner of the comment
     if (comment.user.toString() !== session.user.id) {
       return NextResponse.json(
         { error: "Unauthorized to delete this comment" },

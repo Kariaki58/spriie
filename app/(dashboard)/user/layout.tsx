@@ -9,13 +9,15 @@ import {
   Package, 
   PackageSearch, 
   UserPlus,
-  ShieldCheck
+  ShieldCheck,
+  Wallet
 } from 'lucide-react'
 import ProviderImport from '../vendor/provider-import'
 
 const sidebarConfig = {
     navItems: [
         { href: '/user', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },        
+        { href: '/user/wallet', label: 'My Wallet', icon: <Wallet className="w-5 h-5" /> },
         { href: '/user/orders', label: 'Orders', icon: <ShoppingCart className="w-5 h-5" /> },
         { href: '/user/product-tracking', label: 'Product Tracking', icon: <PackageSearch className="w-5 h-5" /> },
         
