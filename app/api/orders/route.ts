@@ -127,6 +127,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log('line 130')
+
     const storeWithProduct = await Store.findOne({
       products: new mongoose.Types.ObjectId(dbProduct._id),
     });
@@ -149,24 +151,8 @@ export async function POST(req: NextRequest) {
 
     const userWithStore = await User.findOne({ _id: storeWithProduct.userId })
 
-    if (paymentMethod === "wallet") {
-      if (user.wallet < totalCost) {
-        return NextResponse.json(
-          { error: "Insufficient wallet balance"},
-          { status: 400 }
-        )
-      }
 
-      user.wallet -= totalCost;
-      userWithStore.wallet += totalCost;
-      await user.save();
-    }
-    if (paymentMethod == "paystack") {
-      userWithStore.wallet += totalCost;
-    }
-
-    await userWithStore.save();
-
+    console.log("updated")
 
     // Create order in database (pending status)
     const order = new Order({
@@ -196,6 +182,25 @@ export async function POST(req: NextRequest) {
     });
 
     await order.save();
+
+
+    if (paymentMethod === "wallet") {
+      if (user.wallet < totalCost) {
+        return NextResponse.json(
+          { error: "Insufficient wallet balance"},
+          { status: 400 }
+        )
+      }
+
+      user.wallet -= totalCost;
+      userWithStore.wallet += totalCost;
+      await user.save();
+    }
+    if (paymentMethod == "paystack") {
+      userWithStore.wallet += totalCost;
+    }
+
+    await userWithStore.save();
 
     console.log("line 125")
 
