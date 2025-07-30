@@ -30,6 +30,8 @@ const TransactionSchema = new mongoose.Schema(
     },
     reference: {
       type: String,
+      unique: true,
+      sparse: true,
       validate: {
         validator: function (this: any) {
           return this.paymentMethod === "wallet" || !!this.reference;

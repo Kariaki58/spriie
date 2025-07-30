@@ -11,10 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function RegisterForm({
-  className,
-  ...props
-}: React.ComponentProps<"form">) {
+export default function RegisterForm() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
@@ -118,7 +115,7 @@ export default function RegisterForm({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className={cn("space-y-6", className)} {...props}>
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label htmlFor="name" className="block text-sm font-medium text-gray-700">
                 Full Name
@@ -274,7 +271,7 @@ export default function RegisterForm({
             <div className="mt-6 grid grid-cols-1 gap-3">
               <Button
                 variant="outline"
-                onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                onClick={() => signIn("google", { callbackUrl: "/" })}
                 className="w-full"
               >
                 <svg

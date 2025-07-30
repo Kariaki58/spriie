@@ -11,10 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"form">) {
+export default function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,11 +28,11 @@ export default function LoginForm({
       redirect: false,
       email,
       password,
-      callbackUrl: "/dashboard",
+      callbackUrl: "/",
     });
 
     if (res?.ok) {
-      router.push(res.url || "/dashboard");
+      router.push(res.url || "/");
     } else {
       setError("Invalid email or password");
     }
@@ -74,7 +71,7 @@ export default function LoginForm({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className={cn("space-y-6", className)} {...props}>
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
@@ -177,7 +174,7 @@ export default function LoginForm({
             <div className="mt-6 grid grid-cols-1 gap-3">
               <Button
                 variant="outline"
-                onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                onClick={() => signIn("google", { callbackUrl: "/" })}
                 className="w-full"
               >
                 <svg

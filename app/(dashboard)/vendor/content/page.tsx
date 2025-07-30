@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -110,7 +110,7 @@ export default function DashboardContentDisplay() {
             </TableRow>
           ) : (
             products.map((product) => (
-              <>
+              <React.Fragment key={product._id}>
                 <TableRow key={product._id} className="hover:bg-gray-100 dark:hover:bg-gray-800">
                   <TableCell>
                     <div className="relative h-16 w-16">
@@ -219,7 +219,7 @@ export default function DashboardContentDisplay() {
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </React.Fragment>
             ))
           )}
         </TableBody>
