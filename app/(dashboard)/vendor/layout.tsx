@@ -28,7 +28,7 @@ export default function DashboardLayout({
                 <DashboardSidebar config={sidebarConfig}/>
                 <div className="flex flex-col flex-1 overflow-hidden">
                     <TopNav />
-                    <main className="flex-1 p-6 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
+                    <main className="flex-1 p-2 md:p-4 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
                         {children}
                     </main>
                 </div>

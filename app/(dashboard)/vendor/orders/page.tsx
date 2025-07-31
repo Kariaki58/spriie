@@ -245,7 +245,7 @@ const OrdersManagement = () => {
 
     return (
         <div className="dark:bg-gray-900 min-h-screen">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto">
                 {/* Seller Session Card */}
                 {session?.user && (
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-6">
