@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { formatNaira } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Wallet } from 'lucide-react';
 
 const formSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -18,7 +18,7 @@ const formSchema = z.object({
   state: z.string().min(2, "State must be at least 2 characters"),
   postalCode: z.string().min(3, "Postal code must be at least 3 characters"),
   country: z.string().min(2, "Country must be at least 2 characters"),
-  paymentMethod: z.enum(["credit_card", "paypal", "bank_transfer", "cash_on_delivery", "paystack"]),
+  paymentMethod: z.enum(["credit_card", "paypal", "bank_transfer", "cash_on_delivery", "paystack", "wallet"]),
   saveInfo: z.boolean().optional()
 });
 
@@ -30,6 +30,8 @@ export default function CheckOutDisplayPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stores, setStores] = useState<Record<string, {name: string, items: typeof cartItems}>>({});
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [isFetchingWallet, setIsFetchingWallet] = useState(true);
   
   const {
     register,
@@ -45,12 +47,30 @@ export default function CheckOutDisplayPage() {
     }
   });
 
+  // Fetch user wallet balance
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      try {
+        const res = await fetch("/api/profile");
+        const data = await res.json();
+        if (data.message?.wallet) {
+          setWalletBalance(data.message.wallet);
+        }
+      } catch (error) {
+        console.error("Failed to fetch wallet balance:", error);
+      } finally {
+        setIsFetchingWallet(false);
+      }
+    };
+
+    fetchWalletBalance();
+  }, []);
+
   // Group items by store
   useEffect(() => {
     const grouped: Record<string, {name: string, items: typeof cartItems}> = {};
     
     cartItems.forEach(item => {
-      console.log(item)
       const storeId = item.storeId.toString();
       if (!grouped[storeId]) {
         grouped[storeId] = {
@@ -67,8 +87,8 @@ export default function CheckOutDisplayPage() {
   // Calculate totals per store
   const calculateStoreTotals = (items: typeof cartItems) => {
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const shipping = subtotal > 50000 ? 0 : 2000;
-    const tax = subtotal * 0.075;
+    const shipping = 0;
+    const tax = 0;
     const total = subtotal + shipping + tax;
     
     return { subtotal, shipping, tax, total };
@@ -80,9 +100,18 @@ export default function CheckOutDisplayPage() {
     return sum + total;
   }, 0);
 
+  const paymentMethod = watch("paymentMethod");
+
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     setError(null);
+
+    // Check if wallet payment is selected but balance is insufficient
+    if (data.paymentMethod === "wallet" && walletBalance < grandTotal) {
+      setError("Insufficient wallet balance. Please fund your wallet or choose another payment method.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       // Create order
@@ -112,36 +141,13 @@ export default function CheckOutDisplayPage() {
       }
 
       const result = await response.json();
-
       console.log(result);
+      clearCart();
 
-      // Handle payment based on method
-      if (data.paymentMethod === 'paystack') {
-        // Initialize Paystack payment
-        // const paymentResponse = await fetch('/api/payments/paystack', {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //   },
-        //   body: JSON.stringify({
-        //     orderId: result.orderId,
-        //     amount: grandTotal * 100,
-        //     email: data.email,
-        //     callbackUrl: `${window.location.origin}/order-confirmation/${result.orderId}`
-        //   })
-        // });
+      console.log({ orderId: result.orderId})
 
-        // if (!paymentResponse.ok) {
-        //   throw new Error('Failed to initialize payment');
-        // }
-
-        // const paymentData = await paymentResponse.json();
-        // window.location.href = paymentData.authorization_url;
-      } else {
-        // For other payment methods, redirect to confirmation
-        // await clearCart();
-        // router.push(`/order-confirmation/${result.orderId}`);
-      }
+      // Redirect to success page
+      // router.push(`/checkout/success?orderId=${result.orderId}`);
 
     } catch (err) {
       console.error('Checkout error:', err);
@@ -324,6 +330,30 @@ export default function CheckOutDisplayPage() {
               <div className="mt-6">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Payment Method</h2>
                 
+                {/* Wallet Balance Display */}
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Wallet className="w-5 h-5 text-emerald-600 mr-2" />
+                    <span className="font-medium">Wallet Balance:</span>
+                  </div>
+                  <span className="font-bold">{formatNaira(walletBalance)}</span>
+                </div>
+
+                {walletBalance < grandTotal && (
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() => router.push('/wallet')}
+                      className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      Fund Wallet
+                    </button>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Your wallet balance is insufficient. Please fund your wallet to use this payment method.
+                    </p>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <input
@@ -353,14 +383,23 @@ export default function CheckOutDisplayPage() {
 
                   <div className="flex items-center">
                     <input
-                      id="cash_on_delivery"
+                      id="wallet"
                       type="radio"
-                      value="cash_on_delivery"
+                      value="wallet"
                       {...register('paymentMethod')}
                       className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                      disabled={walletBalance < grandTotal}
                     />
-                    <label htmlFor="cash_on_delivery" className="ml-3 block text-sm font-medium text-gray-700">
-                      Cash on Delivery
+                    <label 
+                      htmlFor="wallet" 
+                      className={`ml-3 block text-sm font-medium ${
+                        walletBalance < grandTotal ? 'text-gray-400' : 'text-gray-700'
+                      }`}
+                    >
+                      Pay from Wallet
+                      {walletBalance < grandTotal && (
+                        <span className="ml-2 text-xs text-red-500">(Insufficient balance)</span>
+                      )}
                     </label>
                   </div>
                 </div>
@@ -369,7 +408,7 @@ export default function CheckOutDisplayPage() {
               <div className="mt-6">
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || (paymentMethod === "wallet" && walletBalance < grandTotal)}
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
                 >
                   {isLoading ? (
@@ -385,8 +424,8 @@ export default function CheckOutDisplayPage() {
             </form>
           </div>
 
-          {/* Order Summary */}
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6">
+          {/* Order Summary (keep this section exactly the same) */}
+         <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-6">Order Summary</h2>
             
             <div className="space-y-8">
@@ -445,7 +484,7 @@ export default function CheckOutDisplayPage() {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">VAT (7.5%)</span>
+                        {/* <span className="text-sm text-gray-600">VAT (7.5%)</span> */}
                         <span className="text-sm font-medium">{formatNaira(tax)}</span>
                       </div>
                       <div className="flex justify-between border-t border-gray-200 pt-2">

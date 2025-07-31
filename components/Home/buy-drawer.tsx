@@ -185,6 +185,9 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                     key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
                     email: formData.email,
                     amount: totalAmount * 100, // Convert to kobo
+                    metadata: {
+                        reserve_funds: true
+                    },
                     onSuccess: async (transaction: PaystackTransaction) => {
                         try {
                             const response = await fetch('/api/orders', {
@@ -375,13 +378,13 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                                     <CreditCard className="w-5 h-5" />
                                     Proceed to Checkout
                                 </button>
-                                <button 
+                                {/* <button 
                                     onClick={handleAddToCart} 
                                     className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-xl font-semibold transition-all shadow-md"
                                 >
                                     <ShoppingCart className="w-5 h-5" />
                                     Add to Cart
-                                </button>
+                                </button> */}
                             </div>
                             <DrawerClose asChild>
                                 <div className='flex gap-3 mt-4'>
@@ -513,7 +516,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                         <div className="mb-6">
                             <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Payment Method</h3>
                             <div className="space-y-3">
-                                <button
+                                {/* <button
                                     onClick={() => setPaymentMethod('paystack')}
                                     className={`w-full flex items-center justify-between p-3 border rounded-lg transition-colors ${
                                         paymentMethod === 'paystack'
@@ -530,7 +533,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                                             <div className="w-2 h-2 rounded-full bg-white"></div>
                                         </div>
                                     )}
-                                </button>
+                                </button> */}
 
                                 <div
                                     onClick={() => setPaymentMethod('wallet')}

@@ -209,7 +209,7 @@ export default function CartDisplayPage() {
                               {item.variant.color && <p>Color: {item.variant.color}</p>}
                               {item.variant.size && <p>Size: {item.variant.size}</p>}
                             </div> */}
-                            <p>StoreName - {item.storeName}</p>
+                            <p className='text-gray-900 mb-8'>StoreName - {item.storeName}</p>
 
                             <div className="mt-4 flex items-center">
                               <div className="flex items-center border border-gray-300 rounded-md">
@@ -255,19 +255,19 @@ export default function CartDisplayPage() {
                   <div className="space-y-4">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium">{formatNaira(subtotal)}</span>
+                      <span className="font-medium text-gray-900">{formatNaira(subtotal)}</span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-gray-600">Shipping</span>
-                      <span className="font-medium">
+                      <span className="font-medium text-gray-900">
                         {shipping === 0 ? 'Free' : formatNaira(shipping)}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">VAT (7.5%)</span>
-                      <span className="font-medium">{formatNaira(tax)}</span>
+                      {/* <span className="text-gray-600">VAT (7.5%)</span> */}
+                      <span className="font-medium text-gray-900">{formatNaira(tax)}</span>
                     </div>
 
                     <div className="border-t border-gray-200 pt-4 flex justify-between">

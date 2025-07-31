@@ -6,7 +6,9 @@ import Order from '@/models/order';
 import Cart from '@/models/carts';
 import Product from '@/models/product';
 import Store from '@/models/store';
+import User from '@/models/user';
 // import { sendOrderConfirmationEmail } from '@/lib/email';
+
 
 
 export async function POST(req: NextRequest) {
@@ -21,11 +23,14 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Get user's cart
-    const cart = await Cart.findOne({ userId: session.user.id }).populate({
-      path: 'cartItems.productId',
-      model: Product
-    });
+    // Get user's cart and profile
+    const [cart, user] = await Promise.all([
+      Cart.findOne({ userId: session.user.id }).populate({
+        path: 'cartItems.productId',
+        model: Product
+      }),
+      User.findById(session.user.id)
+    ]);
 
     if (!cart || cart.cartItems.length === 0) {
       return NextResponse.json(
@@ -35,8 +40,6 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-
-    console.log(body)
     const { shippingAddress, paymentMethod } = body;
 
     // Validate required fields
@@ -57,13 +60,14 @@ export async function POST(req: NextRequest) {
       itemsByStore[storeId].push(item);
     });
 
-    // Create order items for each store
+    // Create order items for each store and calculate totals
     const orderItems = await Promise.all(
       Object.entries(itemsByStore).map(async ([storeId, items]) => {
         const store = await Store.findById(storeId);
         if (!store) {
           throw new Error(`Store not found: ${storeId}`);
         }
+        const storeOwner = await User.findOne({ _id: store.userId });
 
         const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const shippingFee = subtotal > 50000 ? 0 : 2000;
@@ -72,6 +76,7 @@ export async function POST(req: NextRequest) {
 
         return {
           storeId,
+          storeOwnerId: storeOwner._id,
           items: items.map(item => ({
             productId: item.productId._id,
             name: item.productId.title,
@@ -86,7 +91,7 @@ export async function POST(req: NextRequest) {
           shippingFee,
           tax,
           total,
-          status: 'pending' as const
+          status: 'pending'
         };
       })
     );
@@ -94,40 +99,62 @@ export async function POST(req: NextRequest) {
     // Calculate grand total
     const grandTotal = orderItems.reduce((sum, item) => sum + item.total, 0);
 
-    console.log('############ORDER ITEMS##############')
-    console.log(orderItems);
-    console.log('############ORDER ITEMS##############')
-    console.log("#############CART ITEMS###############")
-    console.log(orderItems[0].items)
-    console.log("###############ORDER ITEMS##############")
-    console.log('############PAYMENT METHOD##############')
-    console.log(paymentMethod)
-    console.log(grandTotal)
-    console.log('############PAYMENT METHOD##############')
+    // Handle wallet payment if selected
+    if (paymentMethod === 'wallet') {
+      // Check if user has sufficient balance
+      if (user.wallet < grandTotal) {
+        return NextResponse.json(
+          { error: 'Insufficient wallet balance' },
+          { status: 400 }
+        );
+      }
 
+      // Deduct from buyer's wallet
+      user.wallet -= grandTotal;
+      await user.save();
+    }
+
+    // Create orders and update sellers' wallets
     const orderLists = await Promise.all(
       orderItems.map(async (item) => {
+        // Create the order
         const order = new Order({
           userId: session.user.id,
           storeId: item.storeId,
           cartItems: item.items,
-          status: "pending",
+          status: 'pending',
           shippingAddress: item.shippingAddress,
           paymentMethod,
         });
+
+        // Update seller's wallet (credit their account)
+        if (paymentMethod === 'wallet') {
+          const seller = await User.findById(item.userId);
+          if (seller) {
+            // Deduct platform fee (example: 10%)
+            const platformFee = item.total * 0.1;
+            const sellerEarnings = item.total - platformFee;
+            
+            seller.wallet += sellerEarnings;
+            await seller.save();
+
+            // Record the transaction in the order
+            order.sellerEarnings = sellerEarnings;
+            order.platformFee = platformFee;
+          }
+        }
 
         await order.save();
         return order;
       })
     );
 
-
-
-    console.log(orderLists);
+    // Clear the user's cart after successful order
+    await Cart.findOneAndDelete({ userId: session.user.id });
 
     return NextResponse.json({
       success: true,
-      // orderId: order._id,
+      orderIds: orderLists.map(order => order._id),
       grandTotal,
       paymentMethod
     });
@@ -136,39 +163,6 @@ export async function POST(req: NextRequest) {
     console.error('Order creation error:', error);
     return NextResponse.json(
       { error: 'Failed to create order', details: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession(options);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'You must be signed in to view orders' },
-        { status: 401 }
-      );
-    }
-
-    await connectToDatabase();
-
-    const orders = await Order.find({ userId: session.user.id })
-      .populate({
-        path: 'orderItems.storeId',
-        select: 'name logo'
-      })
-      .populate({
-        path: 'orderItems.items.productId',
-        select: 'title images'
-      })
-      .sort({ createdAt: -1 });
-
-    return NextResponse.json(orders);
-  } catch (error: any) {
-    console.error('Error fetching orders:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch orders', details: error.message },
       { status: 500 }
     );
   }
