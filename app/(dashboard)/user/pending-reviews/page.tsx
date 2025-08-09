@@ -111,7 +111,7 @@ export default function PendingReviewDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {pendingReviews.map((item) => (
-            <Card key={item.id} className="hover:shadow-lg transition-shadow">
+            <Card key={item.id} className="hover:shadow-lg transition-shadow bg-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg">{item.productName}</CardTitle>
                 <p className="text-sm text-gray-500">
@@ -166,7 +166,7 @@ export default function PendingReviewDashboard() {
                   Skip for now
                 </Button>
                 <Button 
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => submitReview(item.id)}
                 >
                   Submit Review

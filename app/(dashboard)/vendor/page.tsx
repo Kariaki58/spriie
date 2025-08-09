@@ -1,4 +1,6 @@
-import { DashboardCard } from '@/components/dashboard/DashboardCard'
+'use client';
+
+import { DashboardCard } from '@/components/dashboard/DashboardCard';
 import { 
   CreditCard, 
   Package, 
@@ -12,41 +14,70 @@ import {
   Plus,
   TrendingUp,
   FileText
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { RecentOrders } from '@/components/dashboard/RecentOrders'
-import { QuickActions } from '@/components/dashboard/QuickActions'
-import { PerformanceChart } from '@/components/dashboard/PerformanceChart'
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { RecentOrders } from '@/components/dashboard/RecentOrders';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { PerformanceChart } from '@/components/dashboard/PerformanceChart';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDashboardData } from '@/hooks/useDashboardData';
+import { LucideIcon } from 'lucide-react';
 
-export default async function DashboardPage() {
-    const stats = [
-        { 
-          title: 'Today\'s Revenue', 
-          value: '₦245,800', 
-          change: '+12% from yesterday',
-          icon: <DollarSign className="text-green-500" /> 
-        },
-        { 
-          title: 'Pending Orders', 
-          value: '24', 
-          change: '5 new in last hour',
-          icon: <ShoppingCart className="text-blue-500" /> 
-        },
-        { 
-          title: 'Products', 
-          value: '42', 
-          change: '3 low in stock',
-          icon: <Package className="text-amber-500" /> 
-        },
-        { 
-          title: 'Customer Messages', 
-          value: '8', 
-          change: '3 awaiting reply',
-          icon: <MessageSquare className="text-purple-500" /> 
-        },
-    ]
+// Define types for the dashboard data
+type StatItem = {
+  title: string;
+  value: string;
+  change: string;
+  icon: keyof typeof iconMap;
+};
 
-    const quickActions = [
+type RecentOrder = {
+  id: string;
+  customer: string;
+  amount: string;
+  status: string;
+  date: string;
+};
+
+type AlertItem = {
+  type: string;
+  message: string;
+  details: string;
+};
+
+type PerformanceDataItem = {
+  day: string;
+  sales: number;
+  orders: number;
+};
+
+
+// Define props for components
+type QuickAction = {
+  title: string;
+  icon: React.ReactNode;
+  action: string;
+};
+
+const iconMap = {
+  'dollar-sign': DollarSign,
+  'shopping-cart': ShoppingCart,
+  'package': Package,
+  'message-square': MessageSquare
+} as Record<string, LucideIcon>;
+
+
+type DashboardData = {
+    stats: StatItem[];
+    recentOrders: RecentOrder[];
+    alerts: AlertItem[];
+    performanceData: PerformanceDataItem[];
+}
+
+export default function DashboardPage() {
+    const { dashboardData, loading, error } = useDashboardData();
+
+    const quickActions: QuickAction[] = [
       {
         title: 'Add New Product',
         icon: <Plus className="h-5 w-5" />,
@@ -67,45 +98,54 @@ export default async function DashboardPage() {
         icon: <FileText className="h-5 w-5" />,
         action: '/vendor/analytics'
       }
-    ]
+    ];
 
-    const recentOrders = [
-      {
-        id: '#ORD-8765',
-        customer: 'Adebola Johnson',
-        amount: '₦42,500',
-        status: 'processing',
-        date: '10 mins ago'
-      },
-      {
-        id: '#ORD-8764',
-        customer: 'Chinedu Okoro',
-        amount: '₦18,750',
-        status: 'shipped',
-        date: '25 mins ago'
-      },
-      {
-        id: '#ORD-8763',
-        customer: 'Funke Adeleke',
-        amount: '₦63,200',
-        status: 'pending',
-        date: '1 hour ago'
-      },
-      {
-        id: '#ORD-8762',
-        customer: 'Emeka Okafor',
-        amount: '₦12,900',
-        status: 'delivered',
-        date: '2 hours ago'
-      },
-      {
-        id: '#ORD-8761',
-        customer: 'Bisi Alabi',
-        amount: '₦29,350',
-        status: 'processing',
-        date: '3 hours ago'
-      }
-    ]
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Skeleton className="h-8 w-48 mb-2" />
+                        <Skeleton className="h-4 w-64" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Skeleton key={i} className="h-36 rounded-lg" />
+                    ))}
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Skeleton className="h-80 rounded-lg" />
+                    <Skeleton className="lg:col-span-2 h-80 rounded-lg" />
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Skeleton className="lg:col-span-2 h-80 rounded-lg" />
+                    <Skeleton className="h-80 rounded-lg" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64">
+                <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+                <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                    Failed to load dashboard data
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {error}
+                </p>
+                <Button className="mt-4" onClick={() => window.location.reload()}>
+                    Retry
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -125,14 +165,18 @@ export default async function DashboardPage() {
 
             {/* Stats Cards - Top Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, index) => (
-                    <DashboardCard
-                        key={index}
-                        title={stat.title}
-                        value={stat.value}
-                        icon={stat.icon}
-                    />
-                ))}
+              {(dashboardData as DashboardData)?.stats.map((stat, index) => {
+                const IconComponent = iconMap[stat.icon];
+                return (
+                  <DashboardCard
+                    key={index}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    icon={<IconComponent className="h-5 w-5" />}
+                  />
+                );
+              })}
             </div>
 
             {/* Middle Section - Quick Actions and Performance */}
@@ -146,51 +190,33 @@ export default async function DashboardPage() {
                     Last 7 days
                   </Button>
                 </div>
-                <PerformanceChart />
+                <PerformanceChart data={(dashboardData as DashboardData)?.performanceData} />
               </div>
             </div>
 
             {/* Bottom Section - Recent Orders and Alerts */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
-                <RecentOrders orders={recentOrders} />
+                <RecentOrders orders={(dashboardData as DashboardData)?.recentOrders || []} />
               </div>
               
               <div className="dark:bg-gray-800 rounded-lg border p-6">
                 <h2 className="text-lg font-semibold mb-4">Alerts & Notifications</h2>
                 <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium">3 products low in stock</p>
-                      <p className="text-sm text-muted-foreground">
-                        Nike Air Max, Adidas Ultraboost, and Puma RS-X are running low
-                      </p>
+                  {(dashboardData as DashboardData)?.alerts.map((alert, index) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                      <div>
+                        <p className="font-medium">{alert.message}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {alert.details}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <Truck className="h-5 w-5 text-blue-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium">5 orders ready for dispatch</p>
-                      <p className="text-sm text-muted-foreground">
-                        Packages need to be prepared for shipping today
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <MessageSquare className="h-5 w-5 text-purple-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium">New customer inquiry</p>
-                      <p className="text-sm text-muted-foreground">
-                        Oluwaseun asked about product availability
-                      </p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
         </div>
-    )
+    );
 }

@@ -14,9 +14,17 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Search,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 interface Customer {
   id: string;
@@ -29,6 +37,8 @@ interface Customer {
   lastPurchase: string;
 }
 
+type ItemsPerPage = 5 | 10 | 20;
+
 export default function DashboardCustomers() {
   // Mock data - replace with actual API call
   const [customers, setCustomers] = useState<Customer[]>([
@@ -39,7 +49,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/32.jpg",
       orders: 5,
       productsBought: 12,
-      totalSpent: 1245990, // ₦1,245,990
+      totalSpent: 1245990,
       lastPurchase: "2023-06-15",
     },
     {
@@ -49,7 +59,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/44.jpg",
       orders: 3,
       productsBought: 8,
-      totalSpent: 876500, // ₦876,500
+      totalSpent: 876500,
       lastPurchase: "2023-06-10",
     },
     {
@@ -59,7 +69,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/67.jpg",
       orders: 7,
       productsBought: 21,
-      totalSpent: 2341750, // ₦2,341,750
+      totalSpent: 2341750,
       lastPurchase: "2023-06-18",
     },
     {
@@ -69,7 +79,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/63.jpg",
       orders: 2,
       productsBought: 4,
-      totalSpent: 432000, // ₦432,000
+      totalSpent: 432000,
       lastPurchase: "2023-05-28",
     },
     {
@@ -79,7 +89,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/85.jpg",
       orders: 4,
       productsBought: 9,
-      totalSpent: 987250, // ₦987,250
+      totalSpent: 987250,
       lastPurchase: "2023-06-12",
     },
     {
@@ -89,7 +99,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/33.jpg",
       orders: 6,
       productsBought: 15,
-      totalSpent: 1567800, // ₦1,567,800
+      totalSpent: 1567800,
       lastPurchase: "2023-06-20",
     },
     {
@@ -99,7 +109,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/22.jpg",
       orders: 1,
       productsBought: 2,
-      totalSpent: 199990, // ₦199,990
+      totalSpent: 199990,
       lastPurchase: "2023-05-15",
     },
     {
@@ -109,7 +119,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/28.jpg",
       orders: 9,
       productsBought: 27,
-      totalSpent: 2987500, // ₦2,987,500
+      totalSpent: 2987500,
       lastPurchase: "2023-06-22",
     },
     {
@@ -119,7 +129,7 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/men/42.jpg",
       orders: 3,
       productsBought: 7,
-      totalSpent: 765300, // ₦765,300
+      totalSpent: 765300,
       lastPurchase: "2023-06-08",
     },
     {
@@ -129,15 +139,15 @@ export default function DashboardCustomers() {
       avatar: "https://randomuser.me/api/portraits/women/51.jpg",
       orders: 5,
       productsBought: 11,
-      totalSpent: 1123450, // ₦1,123,450
+      totalSpent: 1123450,
       lastPurchase: "2023-06-17",
     },
   ]);
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<ItemsPerPage>(5);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Filter customers based on search term
   const filteredCustomers = customers.filter(
@@ -156,7 +166,7 @@ export default function DashboardCustomers() {
   );
 
   // Format currency in Naira with commas
-  const formatNaira = (amount: number) => {
+  const formatNaira = (amount: number): string => {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
@@ -166,7 +176,7 @@ export default function DashboardCustomers() {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -175,102 +185,190 @@ export default function DashboardCustomers() {
   };
 
   // Pagination controls
-  const goToPage = (page: number) => {
+  const goToPage = (page: number): void => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
+  // Handle items per page change
+  const handleItemsPerPageChange = (value: ItemsPerPage): void => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  };
+
   return (
-    <div className="container mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Customer Dashboard</h1>
-        <div className="flex items-center gap-4">
-          <Input
-            placeholder="Search customers..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="max-w-xs"
-          />
-          <select
-            value={itemsPerPage}
-            onChange={(e) => {
-              setItemsPerPage(Number(e.target.value));
-              setCurrentPage(1);
-            }}
-            className="border rounded-md px-3 py-2 text-sm text-gray-800 dark:text-white dark:bg-black"
-          >
-            <option value="5">5 per page</option>
-            <option value="10">10 per page</option>
-            <option value="20">20 per page</option>
-          </select>
+    <div className="container mx-auto px-4 py-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Customer Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage and analyze your customer data
+          </p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search customers..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-9 w-full"
+            />
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto">
+                {itemsPerPage} per page
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleItemsPerPageChange(5)}>
+                5 per page
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleItemsPerPageChange(10)}>
+                10 per page
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleItemsPerPageChange(20)}>
+                20 per page
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Customer</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead className="text-right">Orders</TableHead>
-              <TableHead className="text-right">Products</TableHead>
-              <TableHead className="text-right">Total Spent</TableHead>
-              <TableHead className="text-right">Last Purchase</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {currentCustomers.length > 0 ? (
-              currentCustomers.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={customer.avatar} />
-                        <AvatarFallback>
-                          {customer.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span>{customer.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <a
-                      href={`mailto:${customer.email}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {customer.email}
-                    </a>
-                  </TableCell>
-                  <TableCell className="text-right">{customer.orders}</TableCell>
-                  <TableCell className="text-right">
-                    {customer.productsBought}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatNaira(customer.totalSpent)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatDate(customer.lastPurchase)}
+      {/* Table Section */}
+      <div className="rounded-lg border shadow-sm overflow-hidden">
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader className="bg-gray-50 dark:bg-gray-800">
+              <TableRow>
+                <TableHead className="w-[200px]">Customer</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="text-center">Orders</TableHead>
+                <TableHead className="text-center">Products</TableHead>
+                <TableHead className="text-right">Total Spent</TableHead>
+                <TableHead className="text-right">Last Purchase</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {currentCustomers.length > 0 ? (
+                currentCustomers.map((customer) => (
+                  <TableRow key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={customer.avatar} />
+                          <AvatarFallback>
+                            {customer.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{customer.name}</p>
+                          <p className="text-sm text-muted-foreground md:hidden">
+                            {customer.email}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <a
+                        href={`mailto:${customer.email}`}
+                        className="text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        {customer.email}
+                      </a>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline">{customer.orders}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline">{customer.productsBought}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatNaira(customer.totalSpent)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="text-sm text-muted-foreground">
+                        {formatDate(customer.lastPurchase)}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No customers found
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  No customers found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden">
+          {currentCustomers.length > 0 ? (
+            currentCustomers.map((customer) => (
+              <div key={customer.id} className="border-b p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={customer.avatar} />
+                      <AvatarFallback>
+                        {customer.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{customer.name}</p>
+                      <a
+                        href={`mailto:${customer.email}`}
+                        className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        {customer.email}
+                      </a>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">{formatNaira(customer.totalSpent)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(customer.lastPurchase)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-between mt-3 pt-2 border-t">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Orders</p>
+                    <p className="font-medium">{customer.orders}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Products</p>
+                    <p className="font-medium">{customer.productsBought}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-muted-foreground">
+              No customers found
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-2 mt-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
         <div className="text-sm text-muted-foreground">
           Showing{" "}
           <span className="font-medium">
@@ -282,12 +380,14 @@ export default function DashboardCustomers() {
           of <span className="font-medium">{filteredCustomers.length}</span>{" "}
           customers
         </div>
-        <div className="flex items-center space-x-2">
+        
+        <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
             onClick={() => goToPage(1)}
             disabled={currentPage === 1}
+            className="hidden sm:inline-flex"
           >
             <ChevronsLeft className="h-4 w-4" />
           </Button>
@@ -299,41 +399,47 @@ export default function DashboardCustomers() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            let pageNum;
-            if (totalPages <= 5) {
-              pageNum = i + 1;
-            } else if (currentPage <= 3) {
-              pageNum = i + 1;
-            } else if (currentPage >= totalPages - 2) {
-              pageNum = totalPages - 4 + i;
-            } else {
-              pageNum = currentPage - 2 + i;
-            }
+          
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage <= 2) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 1) {
+                pageNum = totalPages - 2 + i;
+              } else {
+                pageNum = currentPage - 1 + i;
+              }
 
-            return (
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => goToPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+            
+            {totalPages > 3 && currentPage < totalPages - 1 && (
+              <span className="px-2 text-sm">...</span>
+            )}
+            
+            {totalPages > 3 && currentPage < totalPages - 1 && (
               <Button
-                key={pageNum}
-                variant={currentPage === pageNum ? "default" : "outline"}
+                variant={currentPage === totalPages ? "default" : "outline"}
                 size="sm"
-                onClick={() => goToPage(pageNum)}
+                onClick={() => goToPage(totalPages)}
               >
-                {pageNum}
+                {totalPages}
               </Button>
-            );
-          })}
-          {totalPages > 5 && currentPage < totalPages - 2 && (
-            <span className="px-2">...</span>
-          )}
-          {totalPages > 5 && currentPage < totalPages - 2 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(totalPages)}
-            >
-              {totalPages}
-            </Button>
-          )}
+            )}
+          </div>
+          
           <Button
             variant="outline"
             size="sm"
@@ -347,6 +453,7 @@ export default function DashboardCustomers() {
             size="sm"
             onClick={() => goToPage(totalPages)}
             disabled={currentPage === totalPages}
+            className="hidden sm:inline-flex"
           >
             <ChevronsRight className="h-4 w-4" />
           </Button>

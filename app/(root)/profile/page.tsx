@@ -456,11 +456,6 @@ export default function ProfilePage() {
                   {activeTab === "saved" && "Save videos to watch later by tapping the bookmark icon."}
                   {activeTab === "reposts" && "Videos you repost will appear here."}
                 </p>
-                {activeTab === "uploads" && (
-                  <Button className="mt-4" variant="outline">
-                    Upload your first video
-                  </Button>
-                )}
               </div>
             )}
           </div>

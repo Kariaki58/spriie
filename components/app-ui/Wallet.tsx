@@ -1,5 +1,5 @@
 "use client";
-import { Wallet, ArrowUpRight, ArrowDownLeft, CreditCard, Banknote, History, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Wallet, ArrowUpRight, ArrowDownLeft, CreditCard, Banknote, History, Eye, EyeOff, Loader2, ChevronsRight, ChevronsLeft } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,6 @@ import { useEffect, useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner';
 
-// Dummy data for transactions
 const transactions = [
   {
     id: 1,
@@ -196,7 +195,6 @@ export default function WalletDisplay() {
       console.log("DATA------------>", data)
       
       if (data.paymentUrl) {
-        // Redirect to payment gateway
         window.location.href = data.paymentUrl;
       } else {
         throw new Error('Payment URL not received');
@@ -266,8 +264,6 @@ export default function WalletDisplay() {
     }
   };
 
-
-  // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-NG', {
@@ -279,7 +275,6 @@ export default function WalletDisplay() {
     });
   };
 
-  // Format currency for display
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
@@ -287,49 +282,40 @@ export default function WalletDisplay() {
     }).format(amount);
   };
 
-  // Custom pagination logic with ellipsis
   const getPaginationItems = () => {
     const pages = [];
-    const maxVisiblePages = 5; // Maximum pages to show without ellipsis
+    const maxVisiblePages = 5;
     
-    // Always show first page
     pages.push(1);
     
     if (totalPages <= maxVisiblePages + 2) {
-      // Show all pages if total is small
       for (let i = 2; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Determine if we need left ellipsis
       if (currentPage > maxVisiblePages - 1) {
         pages.push('...');
       }
       
-      // Calculate range around current page
       let start = Math.max(2, currentPage - 1);
       let end = Math.min(totalPages - 1, currentPage + 1);
       
-      // Adjust if we're at the beginning or end
       if (currentPage <= maxVisiblePages - 1) {
         end = maxVisiblePages;
       } else if (currentPage >= totalPages - (maxVisiblePages - 2)) {
         start = totalPages - (maxVisiblePages - 1);
       }
       
-      // Add the range
       for (let i = start; i <= end; i++) {
         if (!pages.includes(i)) {
           pages.push(i);
         }
       }
       
-      // Determine if we need right ellipsis
       if (currentPage < totalPages - (maxVisiblePages - 2)) {
         pages.push('...');
       }
       
-      // Always show last page
       if (!pages.includes(totalPages)) {
         pages.push(totalPages);
       }
@@ -402,66 +388,97 @@ export default function WalletDisplay() {
       {activeTab === 'balance' && (
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Transaction History</h3>
-          <div className="rounded-md border dark:border-gray-700 overflow-x-auto">
-            <Table className="min-w-full">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="whitespace-nowrap">Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Amount</TableHead>
-                  <TableHead className="whitespace-nowrap">Date</TableHead>
-                  <TableHead className="whitespace-nowrap">Reference</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell className="flex items-center whitespace-nowrap">
-                      {transaction.type === 'deposit' && (
-                        <ArrowDownLeft className="w-4 h-4 mr-2 text-emerald-600 dark:text-emerald-400" />
-                      )}
-                      {transaction.type === 'withdrawal' && (
-                        <ArrowUpRight className="w-4 h-4 mr-2 text-rose-600 dark:text-rose-400" />
-                      )}
-                      {transaction.type === 'sale' && (
-                        <Banknote className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
-                      )}
-                      <span className="truncate">
-                        {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
-                      </span>
-                    </TableCell>
-                    <TableCell
-                      className={`whitespace-nowrap ${
-                        transaction.type === 'deposit' || transaction.type === 'sale'
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400'
-                      }`}
+          <div className="rounded-lg border dark:border-gray-700 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <Table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <TableHeader className="bg-gray-50 dark:bg-gray-800">
+                  <TableRow>
+                    <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                      Type
+                    </TableHead>
+                    <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                      Amount
+                    </TableHead>
+                    <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                      Date
+                    </TableHead>
+                    <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                      Reference
+                    </TableHead>
+                    <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                      Status
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                  {paginatedTransactions.map((transaction) => (
+                    <TableRow 
+                      key={transaction.id} 
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
-                      {transaction.type === 'withdrawal' ? '-' : '+'}
-                      {formatCurrency(transaction.amount)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDate(transaction.date)}</TableCell>
-                    <TableCell className="whitespace-nowrap">{transaction.reference}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          transaction.status === 'completed'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400'
-                            : transaction.status === 'pending'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-400'
-                            : 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-400'
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {transaction.type === 'deposit' && (
+                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mr-3">
+                              <ArrowDownLeft className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                          )}
+                          {transaction.type === 'withdrawal' && (
+                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center mr-3">
+                              <ArrowUpRight className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                            </div>
+                          )}
+                          {transaction.type === 'sale' && (
+                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mr-3">
+                              <Banknote className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            </div>
+                          )}
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          transaction.type === 'deposit' || transaction.type === 'sale'
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
                         }`}
                       >
-                        {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                        {transaction.type === 'withdrawal' ? '-' : '+'}
+                        {formatCurrency(transaction.amount)}
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {formatDate(transaction.date)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-gray-100">
+                          {transaction.reference}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            transaction.status === 'completed'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400'
+                              : transaction.status === 'pending'
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-400'
+                              : 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-400'
+                          }`}
+                        >
+                          {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
-          {/* Custom Pagination */}
+          {/* Pagination remains the same */}
           <div className="flex items-center justify-center gap-1 mt-4">
             <Button
               variant="outline"
@@ -469,7 +486,7 @@ export default function WalletDisplay() {
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
             >
-              Previous
+              <ChevronsLeft />
             </Button>
             
             {getPaginationItems().map((page, index) => (
@@ -490,7 +507,7 @@ export default function WalletDisplay() {
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
             >
-              Next
+              <ChevronsRight />
             </Button>
           </div>
         </div>
@@ -498,7 +515,7 @@ export default function WalletDisplay() {
 
       {/* Withdraw and Deposit sections remain the same but with responsive improvements */}
       {activeTab === 'withdraw' && (
-        <Card>
+        <Card className='bg-gray-800'>
           <CardHeader>
             <CardTitle>Withdraw Funds</CardTitle>
           </CardHeader>
@@ -556,7 +573,7 @@ export default function WalletDisplay() {
               <div className="pt-2">
                 <Button 
                   type="submit" 
-                  className="w-full bg-emerald-600 hover:bg-emerald-700"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-6"
                   disabled={loading}
                 >
                   {loading ? (
@@ -572,7 +589,7 @@ export default function WalletDisplay() {
       )}
 
       {activeTab === 'deposit' && (
-        <Card>
+        <Card className='bg-gray-800'>
           <CardHeader>
             <CardTitle>Deposit Funds</CardTitle>
           </CardHeader>

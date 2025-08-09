@@ -825,9 +825,6 @@ export default function CreateStore() {
           </form>
         </Form>
       </div>
-      <Button onClick={test}>
-        Test session
-      </Button>
     </main>
   )
 }

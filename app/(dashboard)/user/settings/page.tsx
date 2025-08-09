@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useState } from "react";
 import {
   Card,
   CardHeader,
@@ -22,9 +23,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import AddressDisplay from "@/components/app-ui/AddressDisplay";
 
-// Type definitions
-type Address = {
+
+export type Address = {
   id: string;
   type: string;
   street: string;
@@ -70,8 +72,8 @@ type UserData = {
 
 export default function UserDashboardSettingsDisplay() {
   const { data: session } = useSession();
+  const [userAddress, setUserAddress] = useState(null);
   
-  // Sample user data with proper typing
   const userData: UserData = {
     name: session?.user?.name || "Guest User",
     email: session?.user?.email || "user@example.com",
@@ -272,67 +274,8 @@ export default function UserDashboardSettingsDisplay() {
           </TabsContent>
 
           {/* Addresses Tab */}
-          <TabsContent value="addresses">
-            <Card className="border-0 shadow-sm dark:bg-gray-800 dark:border-gray-800">
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-gray-100">Saved Addresses</CardTitle>
-                <CardDescription className="dark:text-gray-400">
-                  Manage your shipping addresses
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {userData.addresses.map((address) => (
-                    <div
-                      key={address.id}
-                      className={`border rounded-lg p-4 ${
-                        address.isDefault
-                          ? "border-emerald-500 dark:border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/20"
-                          : "border-gray-200 dark:border-gray-800"
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                              {address.type}
-                            </h3>
-                            {address.isDefault && (
-                              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                                Default
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {address.street}, {address.city}, {address.state},{" "}
-                            {address.country}
-                          </p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button variant="outline" size="sm" className="dark:border-gray-700 dark:text-gray-200">
-                            Edit
-                          </Button>
-                          {!address.isDefault && (
-                            <Button variant="outline" size="sm" className="dark:border-gray-700 dark:text-gray-200">
-                              Remove
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-start border-t px-6 py-4 dark:border-gray-800">
-                <Button 
-                  variant="outline" 
-                  className="border-emerald-500 text-emerald-600 dark:text-emerald-400 dark:border-emerald-400"
-                >
-                  + Add New Address
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
+          <AddressDisplay addresses={userData.addresses} />
+          
 
           {/* Payments Tab */}
           <TabsContent value="payments">
@@ -474,7 +417,7 @@ export default function UserDashboardSettingsDisplay() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end border-t px-6 py-4 dark:border-gray-800">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-800">
+                <Button className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-800 text-white">
                   Save Preferences
                 </Button>
               </CardFooter>

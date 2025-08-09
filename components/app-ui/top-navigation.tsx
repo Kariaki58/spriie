@@ -44,7 +44,7 @@ export default function TopNavigation() {
       href: session?.user?.role === "seller" ? "/vendor" : "/user" 
     },
     // { icon: <ShoppingCart className="w-5 h-5" />, name: "Cart", href: "/cart" },
-    { icon: <MessageSquare className="w-5 h-5" />, name: "Chat", href: "/chat" },
+    // { icon: <MessageSquare className="w-5 h-5" />, name: "Chat", href: "/chat" },
     { icon: <User className="w-5 h-5" />, name: "Profile", href: "/profile" },
   ];
 

@@ -71,7 +71,8 @@ export default function ProductScreen({ product, isActive }: any) {
     const { data: session } = useSession();
 
 
-    console.log(session);
+    console.log({session});
+    console.log({ product })
     
     const mediaItems = [
         { type: 'video', url: product.video },
@@ -259,7 +260,7 @@ export default function ProductScreen({ product, isActive }: any) {
     const initiallyLiked = session?.user?.id
     ? product.likedBy.map((id: string) => id).includes(session.user.id)
     : false;
-
+    
     return (
         <div className="h-[100vh] w-full max-w-md mx-auto bg-black relative overflow-hidden snap-start">
             <div 

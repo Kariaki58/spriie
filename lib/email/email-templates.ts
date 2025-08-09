@@ -216,3 +216,90 @@ export function passwordResetConfirmationEmail() {
     `,
   };
 }
+
+export function teamInvitationEmail(
+  inviterName: string,
+  teamName: string,
+  inviteLink: string,
+  role: string,
+  expiresIn: string
+) {
+  const container = `
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #333333;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+  `;
+
+  const contentBox = `
+    background-color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  `;
+
+  const header = `
+    background-color: #10b981;
+    color: #ffffff;
+    padding: 20px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+  `;
+
+  const section = `
+    padding: 30px;
+  `;
+
+  const paragraph = `
+    font-size: 16px;
+    margin-bottom: 20px;
+  `;
+
+  const button = `
+    display: inline-block;
+    background-color: #10b981;
+    color: #ffffff;
+    padding: 12px 24px;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 16px;
+    margin: 20px 0;
+  `;
+
+  const footer = `
+    background-color: #f8f9fa;
+    padding: 20px;
+    text-align: center;
+    font-size: 12px;
+    color: #6c757d;
+    border-top: 1px solid #e9ecef;
+  `;
+
+  return {
+    subject: `You've been invited to join ${teamName}`,
+    html: `
+      <div style="${container}">
+        <div style="${contentBox}">
+          <div style="${header}">Team Invitation</div>
+          <div style="${section}">
+            <p style="${paragraph}">
+              <strong>${inviterName}</strong> has invited you to join 
+              <strong>${teamName}</strong> as a <strong>${role}</strong>.
+            </p>
+            
+            <a href="${inviteLink}" style="${button}">Accept Invitation</a>
+
+            <p style="${paragraph}">
+              This invitation link will expire in ${expiresIn}. If you didn't request this invitation, please ignore this email.
+            </p>
+          </div>
+          <div style="${footer}">${teamName}</div>
+        </div>
+      </div>
+    `,
+  };
+}

@@ -5,6 +5,7 @@ import Store from "@/models/store";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { options } from "../auth/options";
+import Team from "@/models/Team";
 import { z } from "zod";
 
 const addressSchema = z.object({
@@ -80,8 +81,6 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
 
         const userId = session.user?.id;
-        console.log(userId)
-        console.log(session)
         if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
             return NextResponse.json(
                 { error: "Invalid user ID" },
@@ -90,7 +89,6 @@ export async function POST(req: NextRequest) {
         }
 
         const user = await User.findById(userId);
-
         if (!user) {
             return NextResponse.json({
                 error: "Invalid user"
@@ -106,8 +104,6 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-
-        // Validate input data
         const validationResult = storeSchema.safeParse(body);
         if (!validationResult.success) {
             return NextResponse.json(
@@ -119,7 +115,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Check for unique store name
         const existingStore = await Store.findOne({ 
             storeName: { $regex: new RegExp(`^${body.storeName}$`, 'i') }
         });
@@ -131,7 +126,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Transform opening hours
         const openingHours = {
             monday: formatOpeningHour(body.openingHours.find((day: any) => day.day === 'Monday')),
             tuesday: formatOpeningHour(body.openingHours.find((day: any) => day.day === 'Tuesday')),
@@ -142,7 +136,6 @@ export async function POST(req: NextRequest) {
             sunday: formatOpeningHour(body.openingHours.find((day: any) => day.day === 'Sunday'))
         };
 
-        // Create store document with colors included
         const storeData = {
             userId: new mongoose.Types.ObjectId(userId),
             storeName: body.storeName,
@@ -153,7 +146,7 @@ export async function POST(req: NextRequest) {
             address: `${body.address.street}, ${body.address.city}, ${body.address.state}, ${body.address.country}`,
             phone: body.contact.phone,
             email: body.contact.email,
-            colors: { // Added colors object
+            colors: {
                 primary: body.colors.primary,
                 secondary: body.colors.secondary,
                 accent: body.colors.accent
@@ -174,23 +167,31 @@ export async function POST(req: NextRequest) {
             storeUrl: generateUniqueStoreUrl(body.storeName)
         };
 
-        // Save to database
+        // Create store
         const newStore = await Store.create(storeData);
 
-        // Update user role to seller
+        // Create owner team member
+        await Team.create({
+            storeId: newStore._id,
+            userId: new mongoose.Types.ObjectId(userId),
+            email: user.email,
+            name: user.name || user.email.split('@')[0],
+            role: 'owner',
+            avatar: user.image,
+            status: 'active',
+            invitedBy: new mongoose.Types.ObjectId(userId),
+            permissions: {
+                viewStore: true,
+                manageProducts: true,
+                manageOrders: true,
+                manageTeam: true,
+                manageBilling: true
+            }
+        });
+
+        // Update user role
         user.role = "seller";
         await user.save();
-
-        const updatedToken = {
-            ...session, 
-            user: {
-                ...session.user,
-                role: "seller", // Update the role
-                // Add any additional store-related info you want in the session
-                storeId: newStore._id.toString(),
-                storeName: newStore.storeName
-            }
-        };
 
         return NextResponse.json(
             { 
@@ -199,7 +200,7 @@ export async function POST(req: NextRequest) {
                     id: newStore._id,
                     name: newStore.storeName,
                     url: newStore.storeUrl,
-                    colors: newStore.colors // Include colors in response
+                    colors: newStore.colors
                 }
             },
             { status: 201 }
