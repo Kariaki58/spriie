@@ -94,9 +94,6 @@ export default function UserDashboardSettingsDisplay() {
         const addressesRes = await fetch('/api/user/address');
         if (!addressesRes.ok) throw new Error('Failed to fetch addresses');
         const { addresses } = await addressesRes.json();
-
-
-        console.log(addressesRes)
         
         // Fetch order history
         const ordersRes = await fetch('/api/user/orders');
@@ -208,7 +205,7 @@ export default function UserDashboardSettingsDisplay() {
     }
   };
 
-  const handleAddressUpdate = async (updatedAddresses: Address[]) => {
+  const handleAddressUpdate = (updatedAddresses: Address[]) => {
     setUserData(prev => ({
       ...prev,
       addresses: updatedAddresses,
@@ -311,16 +308,6 @@ export default function UserDashboardSettingsDisplay() {
                         />
                       </div>
                     </div>
-
-                    {/* <div>
-                      <Label htmlFor="phone" className="dark:text-gray-300">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="mt-1 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                      />
-                    </div> */}
 
                     <div className="pt-4">
                       <Label className="dark:text-gray-300">Account Created</Label>

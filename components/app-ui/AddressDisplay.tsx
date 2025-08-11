@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 export type Address = {
-  _id: undefined;
+  _id: string;
   fullName: string;
   type: string;
   phone: string;
@@ -63,9 +63,14 @@ export default function AddressDisplay({
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Sync local state with parent when initialAddresses changes
+  useEffect(() => {
+    setAddresses(initialAddresses);
+  }, [initialAddresses]);
+
   const resetForm = () => {
     setCurrentAddress({
-      _id: undefined, // Remove empty string _id
+      _id: "",
       fullName: "",
       type: "home",
       phone: "",
@@ -92,11 +97,6 @@ export default function AddressDisplay({
     e.preventDefault();
     if (!currentAddress) return;
 
-    const addressToSubmit = {
-      ...currentAddress,
-      _id: currentAddress._id || undefined
-    };
-
     // Validate required fields
     const requiredFields = ['fullName', 'type', 'phone', 'street', 'city', 'state', 'postalCode', 'country'];
     const missingFields = requiredFields.filter(field => !currentAddress[field as keyof Address]);
@@ -117,7 +117,7 @@ export default function AddressDisplay({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(addressToSubmit),
+        body: JSON.stringify(currentAddress),
       });
 
       if (!response.ok) {
@@ -126,7 +126,12 @@ export default function AddressDisplay({
       }
 
       const { addresses: updatedAddresses } = await response.json();
+      
+      // Update local state immediately
+      setAddresses(updatedAddresses);
+      // Notify parent component
       onUpdate(updatedAddresses);
+      
       toast.success(`Address ${isEditing ? 'updated' : 'added'} successfully`);
       setIsDialogOpen(false);
       resetForm();
@@ -154,7 +159,12 @@ export default function AddressDisplay({
       }
 
       const { addresses: updatedAddresses } = await response.json();
+      
+      // Update local state immediately
+      setAddresses(updatedAddresses);
+      // Notify parent component
       onUpdate(updatedAddresses);
+      
       toast.success("Address removed successfully");
       setIsDeleteDialogOpen(false);
       resetForm();
