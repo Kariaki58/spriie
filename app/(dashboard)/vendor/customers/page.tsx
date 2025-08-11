@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -25,138 +25,61 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface Customer {
   id: string;
   name: string;
   email: string;
-  avatar: string;
+  avatar?: string;
   orders: number;
   productsBought: number;
   totalSpent: number;
-  lastPurchase: string;
+  lastPurchase?: string;
 }
 
 type ItemsPerPage = 5 | 10 | 20;
 
 export default function DashboardCustomers() {
-  // Mock data - replace with actual API call
-  const [customers, setCustomers] = useState<Customer[]>([
-    {
-      id: "1",
-      name: "Alex Johnson",
-      email: "alex.johnson@example.com",
-      avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-      orders: 5,
-      productsBought: 12,
-      totalSpent: 1245990,
-      lastPurchase: "2023-06-15",
-    },
-    {
-      id: "2",
-      name: "Maria Garcia",
-      email: "maria.garcia@example.com",
-      avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-      orders: 3,
-      productsBought: 8,
-      totalSpent: 876500,
-      lastPurchase: "2023-06-10",
-    },
-    {
-      id: "3",
-      name: "James Wilson",
-      email: "james.wilson@example.com",
-      avatar: "https://randomuser.me/api/portraits/men/67.jpg",
-      orders: 7,
-      productsBought: 21,
-      totalSpent: 2341750,
-      lastPurchase: "2023-06-18",
-    },
-    {
-      id: "4",
-      name: "Sarah Miller",
-      email: "sarah.miller@example.com",
-      avatar: "https://randomuser.me/api/portraits/women/63.jpg",
-      orders: 2,
-      productsBought: 4,
-      totalSpent: 432000,
-      lastPurchase: "2023-05-28",
-    },
-    {
-      id: "5",
-      name: "David Lee",
-      email: "david.lee@example.com",
-      avatar: "https://randomuser.me/api/portraits/men/85.jpg",
-      orders: 4,
-      productsBought: 9,
-      totalSpent: 987250,
-      lastPurchase: "2023-06-12",
-    },
-    {
-      id: "6",
-      name: "Emma Davis",
-      email: "emma.davis@example.com",
-      avatar: "https://randomuser.me/api/portraits/women/33.jpg",
-      orders: 6,
-      productsBought: 15,
-      totalSpent: 1567800,
-      lastPurchase: "2023-06-20",
-    },
-    {
-      id: "7",
-      name: "Michael Brown",
-      email: "michael.brown@example.com",
-      avatar: "https://randomuser.me/api/portraits/men/22.jpg",
-      orders: 1,
-      productsBought: 2,
-      totalSpent: 199990,
-      lastPurchase: "2023-05-15",
-    },
-    {
-      id: "8",
-      name: "Olivia Wilson",
-      email: "olivia.wilson@example.com",
-      avatar: "https://randomuser.me/api/portraits/women/28.jpg",
-      orders: 9,
-      productsBought: 27,
-      totalSpent: 2987500,
-      lastPurchase: "2023-06-22",
-    },
-    {
-      id: "9",
-      name: "Daniel Taylor",
-      email: "daniel.taylor@example.com",
-      avatar: "https://randomuser.me/api/portraits/men/42.jpg",
-      orders: 3,
-      productsBought: 7,
-      totalSpent: 765300,
-      lastPurchase: "2023-06-08",
-    },
-    {
-      id: "10",
-      name: "Sophia Martinez",
-      email: "sophia.martinez@example.com",
-      avatar: "https://randomuser.me/api/portraits/women/51.jpg",
-      orders: 5,
-      productsBought: 11,
-      totalSpent: 1123450,
-      lastPurchase: "2023-06-17",
-    },
-  ]);
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const { data: session } = useSession();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<ItemsPerPage>(5);
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Filter customers based on search term
+  // Fetch customers from API
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const res = await fetch("/api/customers");
+        
+        if (!res.ok) throw new Error("Failed to fetch customers");
+        
+        const data = await res.json();
+        setCustomers(data.customers);
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+        toast.error("Failed to load customers");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (session) {
+      fetchCustomers();
+    }
+  }, [session]);
+
+  // Filter and pagination logic
   const filteredCustomers = customers.filter(
     (customer) =>
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Calculate pagination
   const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -165,18 +88,17 @@ export default function DashboardCustomers() {
     indexOfLastItem
   );
 
-  // Format currency in Naira with commas
+  // Helper functions
   const formatNaira = (amount: number): string => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
+    return new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
     }).format(amount);
   };
 
-  // Format date
-  const formatDate = (dateString: string): string => {
+  const formatDate = (dateString?: string): string => {
+    if (!dateString) return "Never";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -184,28 +106,36 @@ export default function DashboardCustomers() {
     });
   };
 
-  // Pagination controls
   const goToPage = (page: number): void => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
-  // Handle items per page change
   const handleItemsPerPageChange = (value: ItemsPerPage): void => {
     setItemsPerPage(value);
     setCurrentPage(1);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-6">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Customer Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Customer Dashboard
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage and analyze your customer data
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-3">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -219,7 +149,7 @@ export default function DashboardCustomers() {
               className="pl-9 w-full"
             />
           </div>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full sm:w-auto">
@@ -259,11 +189,16 @@ export default function DashboardCustomers() {
             <TableBody>
               {currentCustomers.length > 0 ? (
                 currentCustomers.map((customer) => (
-                  <TableRow key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <TableRow
+                    key={customer.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
-                          <AvatarImage src={customer.avatar} />
+                          <AvatarImage
+                            src={customer.avatar || "/default-avatar.png"}
+                          />
                           <AvatarFallback>
                             {customer.name
                               .split(" ")
@@ -322,7 +257,9 @@ export default function DashboardCustomers() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={customer.avatar} />
+                      <AvatarImage
+                        src={customer.avatar || "/default-avatar.png"}
+                      />
                       <AvatarFallback>
                         {customer.name
                           .split(" ")
@@ -341,7 +278,9 @@ export default function DashboardCustomers() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">{formatNaira(customer.totalSpent)}</p>
+                    <p className="font-medium">
+                      {formatNaira(customer.totalSpent)}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDate(customer.lastPurchase)}
                     </p>
@@ -368,97 +307,99 @@ export default function DashboardCustomers() {
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-        <div className="text-sm text-muted-foreground">
-          Showing{" "}
-          <span className="font-medium">
-            {indexOfFirstItem + 1}-{Math.min(
-              indexOfLastItem,
-              filteredCustomers.length
-            )}
-          </span>{" "}
-          of <span className="font-medium">{filteredCustomers.length}</span>{" "}
-          customers
-        </div>
-        
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(1)}
-            disabled={currentPage === 1}
-            className="hidden sm:inline-flex"
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-              let pageNum: number;
-              if (totalPages <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage <= 2) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 1) {
-                pageNum = totalPages - 2 + i;
-              } else {
-                pageNum = currentPage - 1 + i;
-              }
-
-              return (
-                <Button
-                  key={pageNum}
-                  variant={currentPage === pageNum ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => goToPage(pageNum)}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-            
-            {totalPages > 3 && currentPage < totalPages - 1 && (
-              <span className="px-2 text-sm">...</span>
-            )}
-            
-            {totalPages > 3 && currentPage < totalPages - 1 && (
-              <Button
-                variant={currentPage === totalPages ? "default" : "outline"}
-                size="sm"
-                onClick={() => goToPage(totalPages)}
-              >
-                {totalPages}
-              </Button>
-            )}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+          <div className="text-sm text-muted-foreground">
+            Showing{" "}
+            <span className="font-medium">
+              {indexOfFirstItem + 1}-{Math.min(
+                indexOfLastItem,
+                filteredCustomers.length
+              )}
+            </span>{" "}
+            of <span className="font-medium">{filteredCustomers.length}</span>{" "}
+            customers
           </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(totalPages)}
-            disabled={currentPage === totalPages}
-            className="hidden sm:inline-flex"
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </Button>
+
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(1)}
+              disabled={currentPage === 1}
+              className="hidden sm:inline-flex"
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 2) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 1) {
+                  pageNum = totalPages - 2 + i;
+                } else {
+                  pageNum = currentPage - 1 + i;
+                }
+
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => goToPage(pageNum)}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+
+              {totalPages > 3 && currentPage < totalPages - 1 && (
+                <span className="px-2 text-sm">...</span>
+              )}
+
+              {totalPages > 3 && currentPage < totalPages - 1 && (
+                <Button
+                  variant={currentPage === totalPages ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => goToPage(totalPages)}
+                >
+                  {totalPages}
+                </Button>
+              )}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="hidden sm:inline-flex"
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,13 +1,14 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import React from 'react';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
+import Link from 'next/link';
 
-// Types
 type Order = {
   id: string;
   date: string;
-  status: 'pending' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'returned' | 'shipped' | 'delivered' | 'cancelled';
   amount: number;
 };
 
@@ -40,6 +41,7 @@ type StatsCardProps = {
   trend: 'up' | 'down' | 'neutral';
   percentage: string;
 };
+
 
 const StatsCard = ({ title, value, icon, trend, percentage }: StatsCardProps) => {
   const trendColor = {
@@ -79,171 +81,118 @@ const StatsCard = ({ title, value, icon, trend, percentage }: StatsCardProps) =>
   );
 };
 
+
 const UserDashboard = () => {
-  // Mock user data
   const { data: session } = useSession();
-  const [user] = useState({
-    name: 'John Doe',
-    initials: 'JD',
-    totalSpent: 524500, // in kobo (₦5,245.00)
-    totalOrders: 8,
-    activeOrders: 2,
-    loyaltyPoints: 1850,
-    loyaltyTier: 'Gold',
-    address: {
-      street: '123 Victoria Island',
-      city: 'Lagos',
-      state: 'Lagos',
-      country: 'Nigeria'
-    }
-  });
+  const [dashboardData, setDashboardData] = useState<{
+    user: any;
+    orders: Order[];
+    wishlist: WishlistItem[];
+    recommendedProducts: Product[];
+    activities: Activity[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock orders data
-  const [orders] = useState<Order[]>([
-    {
-      id: 'SPR-2023-4567',
-      date: 'June 12, 2023',
-      status: 'delivered',
-      amount: 125000 // ₦1,250.00
-    },
-    {
-      id: 'SPR-2023-4566',
-      date: 'June 5, 2023',
-      status: 'shipped',
-      amount: 89500 // ₦895.00
+  useEffect(() => {
+    if (session?.user) {
+      fetchDashboardData();
     }
-  ]);
+  }, [session]);
 
-  // Mock wishlist data with fixed placeholder images
-  const [wishlist] = useState<WishlistItem[]>([
-    {
-      id: '1',
-      name: 'Smartphone X',
-      price: 150000,
-      image: 'https://placehold.co/150x150?text=Smartphone'
-    },
-    {
-      id: '2',
-      name: 'Wireless Earbuds',
-      price: 35000,
-      image: 'https://placehold.co/150x150?text=Earbuds'
-    },
-    {
-      id: '3',
-      name: 'Laptop Bag',
-      price: 12000,
-      image: 'https://placehold.co/150x150?text=Laptop+Bag'
-    },
-    {
-      id: '4',
-      name: 'Smart Watch',
-      price: 75000,
-      image: 'https://placehold.co/150x150?text=Smart+Watch'
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/dashboard/user');
+      if (!response.ok) throw new Error('Failed to fetch dashboard data');
+      const data = await response.json();
+      setDashboardData(data);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  // Mock recommended products with fixed placeholder images
-  const [recommendedProducts] = useState<Product[]>([
-    {
-      id: '1',
-      name: 'Generac Power Generator',
-      price: 250000,
-      image: 'https://placehold.co/150x150?text=Generator'
-    },
-    {
-      id: '2',
-      name: 'Solar Panel Kit',
-      price: 180000,
-      image: 'https://placehold.co/150x150?text=Solar+Panel'
-    },
-    {
-      id: '3',
-      name: 'Inverter System',
-      price: 120000,
-      image: 'https://placehold.co/150x150?text=Inverter'
-    },
-    {
-      id: '4',
-      name: 'Portable Fridge',
-      price: 95000,
-      image: 'https://placehold.co/150x150?text=Portable+Fridge'
+  const removeFromWishlist = async (productId: string) => {
+    try {
+      const response = await fetch('/api/wishlist', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId }),
+      });
+
+      if (!response.ok) throw new Error('Failed to remove from wishlist');
+
+      toast.success('Removed from wishlist');
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      toast.error('Failed to remove from wishlist');
     }
-  ]);
+  };
 
-  // Mock activities
-  const [activities] = useState<Activity[]>([
-    {
-      id: '1',
-      type: 'order',
-      title: `Order ${orders[0].id} delivered`,
-      date: '2 days ago',
-      icon: (
-        <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
-        </svg>
-      )
-    },
-    {
-      id: '2',
-      type: 'order',
-      title: `Order ${orders[1].id} shipped`,
-      date: '1 week ago',
-      icon: (
-        <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
-    },
-    {
-      id: '3',
-      type: 'points',
-      title: 'You earned 150 loyalty points',
-      date: '2 weeks ago',
-      icon: (
-        <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-      )
-    }
-  ]);
-
-  // Format currency for Nigeria (Naira)
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 2
-    }).format(amount / 100); // Convert from kobo to Naira
+      minimumFractionDigits: 0,
+    }).format(amount);
   };
 
-  // Get status color
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
       case 'delivered':
         return { bg: 'bg-emerald-100 dark:bg-emerald-900/50', text: 'text-emerald-800 dark:text-emerald-200' };
       case 'shipped':
+      case 'processing':
         return { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-800 dark:text-blue-200' };
       case 'pending':
         return { bg: 'bg-yellow-100 dark:bg-yellow-900/50', text: 'text-yellow-800 dark:text-yellow-200' };
       case 'cancelled':
+      case 'returned':
         return { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-800 dark:text-red-200' };
       default:
         return { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-800 dark:text-gray-200' };
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-800 dark:text-gray-200">Failed to load dashboard data</p>
+      </div>
+    );
+  }
+
+  const { user, orders, wishlist, recommendedProducts, activities } = dashboardData;
+
+
+  // console.log(orders.length)
+  console.log({user})
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto p-2 md:p-4">
         {/* Welcome Banner */}
         <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl p-6 mb-6 text-white shadow-lg">
-          <h2 className="text-2xl font-bold">Welcome back, {session?.user?.name}!</h2>
+          <h2 className="text-2xl font-bold">Welcome back, {session?.user?.name || user.name}!</h2>
           <p className="opacity-90 mt-1">Here's what's happening with your Spriie account today.</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-6">
           <StatsCard
             title="Total Spent"
             value={formatCurrency(user.totalSpent)}
@@ -258,7 +207,7 @@ const UserDashboard = () => {
           />
           <StatsCard
             title="Total Orders"
-            value={user.totalOrders.toString()}
+            value={orders.length.toString()}
             icon={
               <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
@@ -281,7 +230,7 @@ const UserDashboard = () => {
         </div>
 
         {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {/* Order Summary */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Recent Orders</h3>
@@ -291,7 +240,7 @@ const UserDashboard = () => {
                 return (
                   <div key={order.id} className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
                     <div>
-                      <p className="font-medium text-gray-800 dark:text-gray-200">{order.id}</p>
+                      <p className="font-medium text-gray-800 dark:text-gray-200">ORD-{order.id}</p>
                       <p className="text-sm text-gray-500">{order.date}</p>
                       <p className="text-sm text-gray-800 dark:text-gray-300 mt-1">{formatCurrency(order.amount)}</p>
                     </div>
@@ -302,7 +251,9 @@ const UserDashboard = () => {
                 );
               })}
               <button className="w-full mt-2 py-2 text-emerald-600 dark:text-emerald-400 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
-                View all orders
+                <Link href="/user/orders">
+                  View all orders
+                </Link>
               </button>
             </div>
           </div>
@@ -310,29 +261,45 @@ const UserDashboard = () => {
           {/* Wishlist Preview */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Wishlist</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {wishlist.map((item) => (
-                <div key={item.id} className="group relative">
-                  <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                    <img 
-                      src={item.image} 
-                      alt={item.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <button className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-700 rounded-full shadow-sm">
-                    <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate mt-1">{item.name}</p>
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(item.price)}</p>
+            {wishlist.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  {wishlist.map((item) => (
+                    <div key={item.id} className="group relative">
+                      <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                        <img 
+                          src={item.image} 
+                          alt={item.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => removeFromWishlist(item.id)}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white dark:bg-gray-700 rounded-full shadow-sm"
+                      >
+                        <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate mt-1">{item.name}</p>
+                      <p className="text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(item.price)}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button className="w-full mt-4 py-2 text-emerald-600 dark:text-emerald-400 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
-              View full wishlist
-            </button>
+                <button className="w-full mt-4 py-2 text-emerald-600 dark:text-emerald-400 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
+                  View full wishlist
+                </button>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">Your wishlist is empty</p>
+                <button className="mt-2 text-emerald-600 dark:text-emerald-400 hover:underline">
+                  <Link href="/">
+                    Browse products
+                  </Link>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Account Summary */}
@@ -341,7 +308,8 @@ const UserDashboard = () => {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-500">Total Spent</p>
-                <p className="text-xl font-bold text-gray-800 dark:text-gray-200">{formatCurrency(user.totalSpent)}</p>
+                <p className="text-xl font-bold text-gray-800 dark:text-gray-200">
+                  {formatCurrency(user.totalSpent)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Loyalty Points</p>
@@ -354,12 +322,20 @@ const UserDashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Default Address</p>
-                <p className="text-gray-800 dark:text-gray-200">{user.address.street}</p>
-                <p className="text-gray-800 dark:text-gray-200">{user.address.city}, {user.address.state}</p>
-                <p className="text-gray-800 dark:text-gray-200">{user.address.country}</p>
+                {user.address.street ? (
+                  <>
+                    <p className="text-gray-800 dark:text-gray-200">{user.address.street}</p>
+                    <p className="text-gray-800 dark:text-gray-200">{user.address.city}, {user.address.state}</p>
+                    <p className="text-gray-800 dark:text-gray-200">{user.address.country}</p>
+                  </>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">No address saved</p>
+                )}
               </div>
               <button className="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition">
-                Manage Account
+                <Link href="/user/settings">
+                  Manage Account
+                </Link>
               </button>
             </div>
           </div>
@@ -368,7 +344,9 @@ const UserDashboard = () => {
           <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Recommended For You</h3>
-              <button className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline">View all</button>
+              <button className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline">
+                <Link href="/">Back Home</Link>
+              </button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {recommendedProducts.map((product) => (
@@ -381,9 +359,9 @@ const UserDashboard = () => {
                     />
                   </div>
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{product.name}</p>
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(product.price)}</p>
+                  {/* <p className="text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(product.price)}</p> */}
                   <button className="mt-2 w-full py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                    Add to Cart
+                    Buy now
                   </button>
                 </div>
               ))}
@@ -401,9 +379,7 @@ const UserDashboard = () => {
                 
                 return (
                   <div key={activity.id} className="flex items-start space-x-3">
-                    <div className={`p-2 ${bgColor} rounded-full`}>
-                      {activity.icon}
-                    </div>
+                    <div className={`p-2 ${bgColor} rounded-full`} dangerouslySetInnerHTML={{ __html: activity.icon.svg }} />
                     <div>
                       <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{activity.title}</p>
                       <p className="text-xs text-gray-500">{activity.date}</p>
@@ -411,9 +387,9 @@ const UserDashboard = () => {
                   </div>
                 );
               })}
-              <button className="w-full mt-2 py-2 text-emerald-600 dark:text-emerald-400 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
+              {/* <button className="w-full mt-2 py-2 text-emerald-600 dark:text-emerald-400 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
                 View all activity
-              </button>
+              </button> */}
             </div>
           </div>
         </div>

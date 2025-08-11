@@ -7,6 +7,33 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'x-vercel-protection-bypass',
+            value: process.env.BYPASS_TOKEN || '',
+          },
+        ],
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: '(?<customDomain>.*)',
+          },
+        ],
+        destination: '/:path*',
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

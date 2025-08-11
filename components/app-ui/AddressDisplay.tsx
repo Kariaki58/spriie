@@ -32,33 +32,49 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Trash2, Edit, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 export type Address = {
-  id: string;
+  _id: undefined;
+  fullName: string;
   type: string;
+  phone: string;
   street: string;
   city: string;
   state: string;
+  postalCode: string;
   country: string;
   isDefault: boolean;
 };
 
-export default function AddressDisplay({ addresses: initialAddresses }: { addresses: Address[] }) {
+export default function AddressDisplay({ 
+  addresses: initialAddresses,
+  onUpdate,
+  isLoading
+}: { 
+  addresses: Address[];
+  onUpdate: (addresses: Address[]) => void;
+  isLoading: boolean;
+}) {
   const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentAddress, setCurrentAddress] = useState<Address | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
     setCurrentAddress({
-      id: "",
-      type: "Home",
+      _id: undefined, // Remove empty string _id
+      fullName: "",
+      type: "home",
+      phone: "",
       street: "",
       city: "",
       state: "",
+      postalCode: "",
       country: "",
-      isDefault: false,
+      isDefault: addresses.length === 0,
     });
     setIsEditing(false);
   };
@@ -69,12 +85,6 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
   };
 
   const handleSetDefault = (checked: boolean) => {
-    if (checked) {
-      // If setting to default, first unset any existing default address
-      setAddresses(prev =>
-        prev.map(addr => ({ ...addr, isDefault: false }))
-      );
-    }
     setCurrentAddress(prev => ({ ...prev!, isDefault: checked }));
   };
 
@@ -82,78 +92,77 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
     e.preventDefault();
     if (!currentAddress) return;
 
+    const addressToSubmit = {
+      ...currentAddress,
+      _id: currentAddress._id || undefined
+    };
+
+    // Validate required fields
+    const requiredFields = ['fullName', 'type', 'phone', 'street', 'city', 'state', 'postalCode', 'country'];
+    const missingFields = requiredFields.filter(field => !currentAddress[field as keyof Address]);
+    
+    if (missingFields.length > 0) {
+      toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    setIsSubmitting(true);
+    
     try {
-      if (isEditing) {
-        setAddresses(prev =>
-          prev.map(addr =>
-            addr.id === currentAddress.id 
-              ? currentAddress 
-              : currentAddress.isDefault 
-                ? { ...addr, isDefault: false } 
-                : addr
-          )
-        );
-        toast.success("Address updated successfully");
-      } else {
-        const newAddress = {
-          ...currentAddress,
-          id: `addr-${Date.now()}`,
-          isDefault: currentAddress.isDefault,
-        };
-        
-        setAddresses(prev => [
-          ...prev.map(addr => 
-            newAddress.isDefault 
-              ? { ...addr, isDefault: false } 
-              : addr
-          ),
-          newAddress
-        ]);
+      const method = isEditing ? "PUT" : "POST";
+      const url = `/api/user/address${isEditing ? `?addressId=${currentAddress._id}` : ''}`;
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(addressToSubmit),
+      });
 
-        try {
-            const res = await fetch(`/api/address`, {
-                method: "POST",
-                body: JSON.stringify(newAddress)
-            })
-
-            if (!res.ok) {
-                const errorRes = await res.json();
-                toast.error(errorRes.error);
-            }
-        } catch (error) {
-            console.log(error)
-            toast.error("something went wrong")
-            return;
-        }
-
-        toast.success("Address added successfully");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save address');
       }
+
+      const { addresses: updatedAddresses } = await response.json();
+      onUpdate(updatedAddresses);
+      toast.success(`Address ${isEditing ? 'updated' : 'added'} successfully`);
       setIsDialogOpen(false);
       resetForm();
-    } catch (error) {
-      toast.error("Failed to save address");
+    } catch (error: any) {
+      console.error("Error saving address:", error);
+      toast.error(error.message || `Failed to ${isEditing ? 'update' : 'add'} address`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!currentAddress) return;
     
+    setIsSubmitting(true);
+    
     try {
-      const wasDefault = currentAddress.isDefault;
-      setAddresses(prev => prev.filter(addr => addr.id !== currentAddress.id));
-      
-      if (wasDefault && addresses.length > 1) {
-        setAddresses(prev => [
-          { ...prev[0], isDefault: true },
-          ...prev.slice(1)
-        ]);
+      const response = await fetch(`/api/user/address?addressId=${currentAddress._id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete address');
       }
-      
+
+      const { addresses: updatedAddresses } = await response.json();
+      onUpdate(updatedAddresses);
       toast.success("Address removed successfully");
       setIsDeleteDialogOpen(false);
       resetForm();
-    } catch (error) {
-      toast.error("Failed to remove address");
+    } catch (error: any) {
+      console.error("Error deleting address:", error);
+      toast.error(error.message || "Failed to remove address");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -189,7 +198,7 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
           <div className="space-y-4">
             {addresses.map((address) => (
               <div
-                key={address.id}
+                key={address._id}
                 className={`border rounded-lg p-4 transition-all duration-200 hover:shadow-md ${
                   address.isDefault
                     ? "border-emerald-500 dark:border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/20"
@@ -200,7 +209,7 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                   <div>
                     <div className="flex items-center space-x-2">
                       <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                        {address.type}
+                        {address.fullName} ({address.type})
                       </h3>
                       {address.isDefault && (
                         <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
@@ -209,11 +218,13 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                       )}
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {address.street}, {address.city}, {address.state},{" "}
-                      {address.country}
+                      {address.street}, {address.city}, {address.state}, {address.country}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                      {address.isDefault && "★ Primary shipping address"}
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Postal Code: {address.postalCode}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Phone: {address.phone}
                     </p>
                   </div>
                   <div className="flex space-x-2">
@@ -222,6 +233,7 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                       size="sm"
                       className="dark:border-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                       onClick={() => handleEditClick(address)}
+                      disabled={isLoading}
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
@@ -232,6 +244,7 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                         size="sm"
                         className="dark:border-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => handleRemoveClick(address)}
+                        disabled={isLoading}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Remove
@@ -258,6 +271,7 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                 variant="outline"
                 className="border-emerald-500 text-emerald-600 hover:text-emerald-700 hover:border-emerald-600 dark:text-emerald-400 dark:border-emerald-400 dark:hover:text-emerald-300 dark:hover:border-emerald-300"
                 onClick={handleAddClick}
+                disabled={isLoading}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add New Address
@@ -270,44 +284,60 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName" className="text-gray-700 dark:text-gray-300">
+                    Full Name*
+                  </Label>
+                  <Input
+                    id="fullName"
+                    name="fullName"
+                    value={currentAddress?.fullName || ""}
+                    onChange={handleInputChange}
+                    className="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                    required
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="type" className="text-gray-700 dark:text-gray-300">
-                      Address Type
+                      Address Type*
                     </Label>
                     <Select
-                      value={currentAddress?.type || "Home"}
+                      value={currentAddress?.type || "home"}
                       onValueChange={(value) =>
                         setCurrentAddress(prev => ({ ...prev!, type: value }))
                       }
+                      required
                     >
                       <SelectTrigger className="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
                       <SelectContent className="dark:bg-gray-700 dark:border-gray-600">
-                        <SelectItem value="Home">Home</SelectItem>
-                        <SelectItem value="Work">Work</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                        <SelectItem value="home">Home</SelectItem>
+                        <SelectItem value="work">Work</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="country" className="text-gray-700 dark:text-gray-300">
-                      Country
+                    <Label htmlFor="phone" className="text-gray-700 dark:text-gray-300">
+                      Phone Number*
                     </Label>
                     <Input
-                      id="country"
-                      name="country"
-                      value={currentAddress?.country || ""}
+                      id="phone"
+                      name="phone"
+                      value={currentAddress?.phone || ""}
                       onChange={handleInputChange}
                       className="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                       required
                     />
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="street" className="text-gray-700 dark:text-gray-300">
-                    Street Address
+                    Street Address*
                   </Label>
                   <Input
                     id="street"
@@ -318,10 +348,11 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                     required
                   />
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city" className="text-gray-700 dark:text-gray-300">
-                      City
+                      City*
                     </Label>
                     <Input
                       id="city"
@@ -334,7 +365,7 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="state" className="text-gray-700 dark:text-gray-300">
-                      State/Province
+                      State/Province*
                     </Label>
                     <Input
                       id="state"
@@ -346,6 +377,36 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                     />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="postalCode" className="text-gray-700 dark:text-gray-300">
+                      Postal Code*
+                    </Label>
+                    <Input
+                      id="postalCode"
+                      name="postalCode"
+                      value={currentAddress?.postalCode || ""}
+                      onChange={handleInputChange}
+                      className="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country" className="text-gray-700 dark:text-gray-300">
+                      Country*
+                    </Label>
+                    <Input
+                      id="country"
+                      name="country"
+                      value={currentAddress?.country || ""}
+                      onChange={handleInputChange}
+                      className="dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div className="flex items-center space-x-2 pt-2">
                   <Switch
                     id="isDefault"
@@ -357,19 +418,21 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                     Set as default address
                     {currentAddress?.isDefault && (
                       <span className="text-xs text-gray-500 dark:text-gray-400 block">
-                        {addresses.some(a => a.isDefault && a.id !== currentAddress.id) 
+                        {addresses.some(a => a.isDefault && a._id !== currentAddress._id) 
                           ? "This will replace your current default address"
                           : "This is your default shipping address"}
                       </span>
                     )}
                   </Label>
                 </div>
+
                 <DialogFooter className="pt-4">
                   <DialogClose asChild>
                     <Button
                       type="button"
                       variant="outline"
                       className="dark:border-gray-600 dark:text-gray-200"
+                      disabled={isSubmitting}
                     >
                       Cancel
                     </Button>
@@ -377,8 +440,14 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                   <Button
                     type="submit"
                     className="bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600"
+                    disabled={isSubmitting}
                   >
-                    {isEditing ? "Update Address" : "Save Address"}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {isEditing ? "Updating..." : "Saving..."}
+                      </>
+                    ) : isEditing ? "Update Address" : "Save Address"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -400,7 +469,7 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                 {currentAddress && (
                   <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
                     <p className="font-medium text-gray-900 dark:text-gray-100">
-                      {currentAddress.type}
+                      {currentAddress.fullName} ({currentAddress.type})
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {currentAddress.street}, {currentAddress.city}, {currentAddress.state}
@@ -418,6 +487,7 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                   <Button
                     variant="outline"
                     className="dark:border-gray-600 dark:text-gray-200"
+                    disabled={isSubmitting}
                   >
                     Cancel
                   </Button>
@@ -425,9 +495,19 @@ export default function AddressDisplay({ addresses: initialAddresses }: { addres
                 <Button
                   variant="destructive"
                   onClick={handleDelete}
+                  disabled={isSubmitting}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Remove Address
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Removing...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remove Address
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>

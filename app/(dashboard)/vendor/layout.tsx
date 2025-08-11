@@ -7,7 +7,7 @@ const sidebarConfig = {
     navItems: [
         { href: '/vendor', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
         { href: '/vendor/wallet', label: 'My Wallet', icon: <Wallet className="w-5 h-5" /> },
-        { href: '/vendor/analytics', label: 'Analytics', icon: <BarChart2 className="w-5 h-5" /> },
+        // { href: '/vendor/analytics', label: 'Analytics', icon: <BarChart2 className="w-5 h-5" /> },
         { href: '/vendor/content', label: 'content', icon: <TableOfContents className="w-5 h-5"/> },
         { href: '/vendor/content-upload', label: 'Content Upload', icon: <MonitorUp className="w-5 h-5" /> },
         { href: '/vendor/orders', label: 'Orders', icon: <ShoppingCart className="w-5 h-5" /> },

@@ -57,7 +57,7 @@ interface Order {
   cancellationReason?: string;
 }
 
-export default function OrderConfirmation({ orderId }) {
+export default function OrderConfirmation({ orderId }: { orderId: string}) {
   const router = useRouter();
   const { width, height } = useWindowSize();
   const [order, setOrder] = useState<Order | null>(null);

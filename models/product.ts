@@ -25,8 +25,11 @@ export interface IProduct extends Document {
   reviews: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
+  totalRatings: number;
+  reviewCount: number;
   likedBy: Types.ObjectId[];
 }
+
 
 const ProductSchema = new Schema<IProduct>(
   {
@@ -76,6 +79,14 @@ const ProductSchema = new Schema<IProduct>(
       required: true,
       min: 0,
       default: 0,
+    },
+    totalRatings: {
+      type: Number,
+      default: 0
+    },
+    reviewCount: {
+      type: Number,
+      default: 0
     },
     video: {
       type: String,
@@ -138,6 +149,11 @@ ProductSchema.index({ title: "text", description: "text" });
 ProductSchema.virtual("discountPercentage").get(function (this: IProduct) {
   return Math.round(((this.basePrice - this.discountedPrice) / this.basePrice) * 100);
 });
+
+ProductSchema.virtual("averageRating").get(function (this: IProduct) {
+  return this.reviewCount > 0 ? (this.totalRatings / this.reviewCount).toFixed(1) : 0;
+});
+
 
 // Ensure virtuals are included in toJSON output
 ProductSchema.set("toJSON", { virtuals: true });

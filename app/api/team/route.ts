@@ -54,10 +54,13 @@ export async function GET(req: NextRequest) {
       .populate('userId', 'name email image')
       .populate('invitedBy', 'name email');
     
+
+    console.log("******************")
+    
     
     console.log(teamMembers)
 
-    return NextResponse.json(teamMembers);
+    return NextResponse.json({ teamMembers, storeId: store._id }, { status: 200 });
   } catch (error) {
     console.log(error)
     return NextResponse.json(
@@ -139,10 +142,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to send initation email" }, { status: 400 })
     }
 
-    return NextResponse.json(
-      { message: "Invitation sent successfully" },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      _id: newMember._id,
+      email: newMember.email,
+      role: newMember.role,
+      status: newMember.status,
+      userId: newMember.userId || null,
+      // Include other necessary fields
+    });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Failed to send invitation" },
@@ -161,6 +168,8 @@ export async function PATCH(req: Request) {
     }
 
     const { memberId, role, storeId } = await req.json();
+
+    console.log(memberId, role, storeId)
 
     if (!memberId || !role || !storeId) {
       return NextResponse.json(
@@ -206,6 +215,8 @@ export async function DELETE(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
+
+    console.log(searchParams)
     const memberId = searchParams.get('memberId');
     const storeId = searchParams.get('storeId');
 

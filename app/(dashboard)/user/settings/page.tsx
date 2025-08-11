@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardHeader,
@@ -23,39 +23,26 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import AddressDisplay from "@/components/app-ui/AddressDisplay";
 
-
 export type Address = {
-  id: string;
+  _id: string;
+  fullName: string;
   type: string;
+  phone: string;
   street: string;
   city: string;
   state: string;
+  postalCode: string;
   country: string;
-  isDefault: boolean;
-};
-
-type PaymentMethod = {
-  id: string;
-  type: 'card' | 'bank';
-  last4?: string;
-  brand?: string;
-  expiry?: string;
-  bank?: string;
-  account?: string;
   isDefault: boolean;
 };
 
 type OrderHistory = {
   totalOrders: number;
   lastOrder: string;
-};
-
-type NotificationSettings = {
-  email: boolean;
-  sms: boolean;
-  push: boolean;
 };
 
 type UserData = {
@@ -65,72 +52,172 @@ type UserData = {
   joinedDate: string;
   avatar: string;
   addresses: Address[];
-  paymentMethods: PaymentMethod[];
   orderHistory: OrderHistory;
-  notifications: NotificationSettings;
 };
 
 export default function UserDashboardSettingsDisplay() {
-  const { data: session } = useSession();
-  const [userAddress, setUserAddress] = useState(null);
-  
-  const userData: UserData = {
-    name: session?.user?.name || "Guest User",
-    email: session?.user?.email || "user@example.com",
-    phone: "+234 812 345 6789",
-    joinedDate: "January 15, 2023",
-    avatar: session?.user?.image || "/default-avatar.jpg",
-    addresses: [
-      {
-        id: "1",
-        type: "Home",
-        street: "123 Main Street",
-        city: "Lagos",
-        state: "Lagos",
-        country: "Nigeria",
-        isDefault: true,
-      },
-      {
-        id: "2",
-        type: "Work",
-        street: "456 Business Avenue",
-        city: "Abuja",
-        state: "FCT",
-        country: "Nigeria",
-        isDefault: false,
-      },
-    ],
-    paymentMethods: [
-      {
-        id: "1",
-        type: "card",
-        last4: "4242",
-        brand: "visa",
-        expiry: "12/25",
-        isDefault: true,
-      },
-      {
-        id: "2",
-        type: "bank",
-        bank: "GTBank",
-        account: "0123456789",
-        isDefault: false,
-      },
-    ],
+  const { data: session, update } = useSession();
+  const [isLoading, setIsLoading] = useState({
+    profile: false,
+    avatar: false,
+    addresses: false,
+  });
+  const [userData, setUserData] = useState<UserData>({
+    name: "",
+    email: "",
+    phone: "",
+    joinedDate: "",
+    avatar: "",
+    addresses: [],
     orderHistory: {
-      totalOrders: 12,
-      lastOrder: "March 15, 2024",
+      totalOrders: 0,
+      lastOrder: "No orders yet",
     },
-    notifications: {
-      email: true,
-      sms: false,
-      push: true,
-    },
+  });
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+  });
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setIsLoading(prev => ({ ...prev, profile: true, addresses: true }));
+        
+        // Fetch profile data
+        const profileRes = await fetch('/api/user/profile');
+        if (!profileRes.ok) throw new Error('Failed to fetch profile');
+        const profileData = await profileRes.json();
+        
+        // Fetch addresses
+        const addressesRes = await fetch('/api/user/address');
+        if (!addressesRes.ok) throw new Error('Failed to fetch addresses');
+        const { addresses } = await addressesRes.json();
+
+
+        console.log(addressesRes)
+        
+        // Fetch order history
+        const ordersRes = await fetch('/api/user/orders');
+        const orderHistory = ordersRes.ok ? await ordersRes.json() : {
+          totalOrders: 0,
+          lastOrder: "No orders yet"
+        };
+        
+        setUserData({
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone || "",
+          joinedDate: profileData.joinedDate || new Date().toLocaleDateString(),
+          avatar: profileData.avatar || "",
+          addresses: addresses || [],
+          orderHistory,
+        });
+        
+        setFormData({
+          name: profileData.name,
+          phone: profileData.phone || "",
+        });
+      } catch (error) {
+        toast.error("Failed to load user data");
+      } finally {
+        setIsLoading(prev => ({ ...prev, profile: false, addresses: false }));
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const handleProfileUpdate = async () => {
+    try {
+      setIsLoading(prev => ({ ...prev, profile: true }));
+      
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+      
+      if (!response.ok) throw new Error('Failed to update profile');
+      
+      const updatedData = await response.json();
+      
+      // Update session if name changed
+      if (updatedData.name !== session?.user?.name) {
+        await update({
+          ...session,
+          user: {
+            ...session?.user,
+            name: updatedData.name,
+          }
+        });
+      }
+      
+      setUserData(prev => ({
+        ...prev,
+        name: updatedData.name,
+        phone: updatedData.phone,
+      }));
+      
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsLoading(prev => ({ ...prev, profile: false }));
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    try {
+      setIsLoading(prev => ({ ...prev, avatar: true }));
+      
+      const file = e.target.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/user/avatar', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) throw new Error('Failed to upload avatar');
+      
+      const { avatar } = await response.json();
+      
+      // Update session with new avatar
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          image: avatar,
+        }
+      });
+      
+      setUserData(prev => ({ ...prev, avatar }));
+      
+      toast.success("Avatar updated successfully");
+    } catch (error) {
+      toast.error("Failed to upload avatar");
+    } finally {
+      setIsLoading(prev => ({ ...prev, avatar: false }));
+    }
+  };
+
+  const handleAddressUpdate = async (updatedAddresses: Address[]) => {
+    setUserData(prev => ({
+      ...prev,
+      addresses: updatedAddresses,
+    }));
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
@@ -138,7 +225,7 @@ export default function UserDashboardSettingsDisplay() {
               Account Settings
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Manage your Spriie account information and preferences
+              Manage your account information and preferences
             </p>
           </div>
           <Button
@@ -155,13 +242,11 @@ export default function UserDashboardSettingsDisplay() {
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-gray-100 dark:bg-gray-800">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="addresses">Addresses</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
           <TabsContent value="profile">
-            <Card className="border-0 dark:bg-gray-800 shadow-sm dark:border-emerald-700">
+            <Card className="border-0 dark:bg-gray-800 shadow-sm dark:border-gray-700">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-gray-100">Profile Information</CardTitle>
                 <CardDescription className="dark:text-gray-400">
@@ -180,9 +265,29 @@ export default function UserDashboardSettingsDisplay() {
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
-                    <Button variant="outline" className="w-full">
-                      Change Photo
-                    </Button>
+                    <div className="relative">
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        disabled={isLoading.avatar}
+                      >
+                        {isLoading.avatar ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          "Change Photo"
+                        )}
+                      </Button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={handleAvatarUpload}
+                        disabled={isLoading.avatar}
+                      />
+                    </div>
                   </div>
 
                   <div className="flex-1 space-y-4">
@@ -191,7 +296,8 @@ export default function UserDashboardSettingsDisplay() {
                         <Label htmlFor="name" className="dark:text-gray-300">Full Name</Label>
                         <Input
                           id="name"
-                          defaultValue={userData.name}
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           className="mt-1 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                         />
                       </div>
@@ -199,40 +305,56 @@ export default function UserDashboardSettingsDisplay() {
                         <Label htmlFor="email" className="dark:text-gray-300">Email</Label>
                         <Input
                           id="email"
-                          defaultValue={userData.email}
+                          value={userData.email}
                           className="mt-1 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
                           disabled
                         />
                       </div>
                     </div>
 
-                    <div>
+                    {/* <div>
                       <Label htmlFor="phone" className="dark:text-gray-300">Phone Number</Label>
                       <Input
                         id="phone"
-                        defaultValue={userData.phone}
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         className="mt-1 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                       />
-                    </div>
+                    </div> */}
 
                     <div className="pt-4">
                       <Label className="dark:text-gray-300">Account Created</Label>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {userData.joinedDate}
+                        {new Date(userData.joinedDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
                       </p>
                     </div>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-end border-t px-6 py-4 dark:border-gray-800">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-800">
-                  Save Changes
+              <CardFooter className="flex justify-end border-t px-6 py-4 dark:border-gray-700">
+                <Button 
+                  onClick={handleProfileUpdate}
+                  disabled={isLoading.profile || formData.name === userData.name && formData.phone === userData.phone}
+                  className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-800"
+                >
+                  {isLoading.profile ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </Button>
               </CardFooter>
             </Card>
 
             {/* Order History Summary */}
-            <Card className="border-0 shadow-sm mt-6 dark:bg-gray-800 dark:border-gray-800">
+            <Card className="border-0 shadow-sm mt-6 dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
                 <CardTitle className="text-gray-900 dark:text-gray-100">Order History</CardTitle>
                 <CardDescription className="dark:text-gray-400">
@@ -241,7 +363,7 @@ export default function UserDashboardSettingsDisplay() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="border rounded-lg p-4 dark:border-gray-800">
+                  <div className="border rounded-lg p-4 dark:border-gray-700">
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       Total Orders
                     </p>
@@ -249,7 +371,7 @@ export default function UserDashboardSettingsDisplay() {
                       {userData.orderHistory.totalOrders}
                     </p>
                   </div>
-                  <div className="border rounded-lg p-4 dark:border-gray-800">
+                  <div className="border rounded-lg p-4 dark:border-gray-700">
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       Last Order
                     </p>
@@ -257,7 +379,7 @@ export default function UserDashboardSettingsDisplay() {
                       {userData.orderHistory.lastOrder}
                     </p>
                   </div>
-                  <div className="border rounded-lg p-4 dark:border-gray-800">
+                  <div className="border rounded-lg p-4 dark:border-gray-700">
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       Actions
                     </p>
@@ -274,154 +396,12 @@ export default function UserDashboardSettingsDisplay() {
           </TabsContent>
 
           {/* Addresses Tab */}
-          <AddressDisplay addresses={userData.addresses} />
-          
-
-          {/* Payments Tab */}
-          <TabsContent value="payments">
-            <Card className="border-0 shadow-sm dark:border-gray-800 dark:bg-gray-800">
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-gray-100">Payment Methods</CardTitle>
-                <CardDescription className="dark:text-gray-400">
-                  Manage your saved payment options
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {userData.paymentMethods.map((method) => (
-                    <div
-                      key={method.id}
-                      className={`border rounded-lg p-4 ${
-                        method.isDefault
-                          ? "border-emerald-500 dark:border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/20"
-                          : "border-gray-200 dark:border-gray-800"
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center space-x-4">
-                          {method.type === "card" ? (
-                            <div className="w-10 h-6 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
-                              <span className="text-xs font-medium dark:text-gray-200">
-                                {method.brand?.toUpperCase()}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="w-10 h-6 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
-                              <span className="text-xs font-medium dark:text-gray-200">BANK</span>
-                            </div>
-                          )}
-                          <div>
-                            <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                              {method.type === "card"
-                                ? `•••• •••• •••• ${method.last4}`
-                                : `${method.bank} •••• ${method.account?.slice(-4)}`}
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {method.type === "card"
-                                ? `Expires ${method.expiry}`
-                                : "Bank Account"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex space-x-2">
-                          {method.isDefault ? (
-                            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                              Default
-                            </Badge>
-                          ) : (
-                            <>
-                              <Button variant="outline" size="sm" className="dark:border-gray-700 dark:text-gray-200">
-                                Make Default
-                              </Button>
-                              <Button variant="outline" size="sm" className="dark:border-gray-700 dark:text-gray-200">
-                                Remove
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-start border-t px-6 py-4 dark:border-gray-800">
-                <Button 
-                  variant="outline" 
-                  className="border-emerald-500 text-emerald-600 dark:text-emerald-400 dark:border-emerald-400"
-                >
-                  + Add Payment Method
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
-          {/* Notifications Tab */}
-          <TabsContent value="notifications">
-            <Card className="border-0 shadow-sm dark:bg-gray-800 dark:border-gray-800">
-              <CardHeader>
-                <CardTitle className="text-gray-900 dark:text-gray-100">Notification Preferences</CardTitle>
-                <CardDescription className="dark:text-gray-400">
-                  Choose how you want to receive notifications
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                        Email Notifications
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Order updates, promotions, and account notifications
-                      </p>
-                    </div>
-                    <Switch
-                      checked={userData.notifications.email}
-                      className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500"
-                    />
-                  </div>
-
-                  <Separator className="dark:bg-gray-800" />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                        SMS Notifications
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Order and delivery updates via text message
-                      </p>
-                    </div>
-                    <Switch
-                      checked={userData.notifications.sms}
-                      className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500"
-                    />
-                  </div>
-
-                  <Separator className="dark:bg-gray-800" />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                        Push Notifications
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        App notifications for important updates
-                      </p>
-                    </div>
-                    <Switch
-                      checked={userData.notifications.push}
-                      className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end border-t px-6 py-4 dark:border-gray-800">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-800 text-white">
-                  Save Preferences
-                </Button>
-              </CardFooter>
-            </Card>
+          <TabsContent value="addresses">
+            <AddressDisplay 
+              addresses={userData.addresses} 
+              onUpdate={handleAddressUpdate}
+              isLoading={isLoading.addresses}
+            />
           </TabsContent>
         </Tabs>
       </div>

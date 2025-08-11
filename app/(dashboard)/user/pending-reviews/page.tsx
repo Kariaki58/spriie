@@ -3,42 +3,52 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 interface PendingReviewItem {
   id: string;
+  productId: string;
+  orderId: string;
   productName: string;
   productImage: string;
   deliveredDate: string;
-  orderId: string;
 }
 
 interface ReviewData {
   rating: number;
   comment: string;
+  reviewImage?: string;
 }
 
 export default function PendingReviewDashboard() {
-  // Mock data - in a real app, this would come from your API
-  const [pendingReviews, setPendingReviews] = useState<PendingReviewItem[]>([
-    {
-      id: "1",
-      productName: "Premium Wireless Headphones",
-      productImage: "/product.jpg",
-      deliveredDate: "2023-05-15",
-      orderId: "ORD-78945",
-    },
-    {
-      id: "2",
-      productName: "Organic Cotton T-Shirt",
-      productImage: "/led-1.webp",
-      deliveredDate: "2023-05-10",
-      orderId: "ORD-78234",
-    },
-  ]);
-
+  const { data: session } = useSession();
+  const [pendingReviews, setPendingReviews] = useState<PendingReviewItem[]>([]);
   const [reviewsData, setReviewsData] = useState<Record<string, ReviewData>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPendingReviews = async () => {
+      try {
+        const response = await fetch('/api/reviews/pending');
+        const data = await response.json();
+        if (response.ok) {
+          setPendingReviews(data.pendingReviews);
+        } else {
+          toast.error(data.error || "Failed to fetch pending reviews");
+        }
+      } catch (error) {
+        toast.error("Failed to fetch pending reviews");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (session) {
+      fetchPendingReviews();
+    }
+  }, [session]);
 
   const handleRatingChange = (productId: string, rating: number) => {
     setReviewsData(prev => ({
@@ -60,7 +70,36 @@ export default function PendingReviewDashboard() {
     }));
   };
 
-  const submitReview = (productId: string) => {
+  const handleImageUpload = async (productId: string, file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setReviewsData(prev => ({
+          ...prev,
+          [productId]: {
+            ...prev[productId],
+            reviewImage: data.secure_url
+          }
+        }));
+        toast.success("Image uploaded successfully");
+      } else {
+        toast.error(data.error || "Failed to upload image");
+      }
+    } catch (error) {
+      toast.error("Failed to upload image");
+    }
+  };
+
+  const submitReview = async (productId: string) => {
     const review = reviewsData[productId];
     
     if (!review?.rating) {
@@ -68,34 +107,63 @@ export default function PendingReviewDashboard() {
       return;
     }
 
-    // In a real app, you would call your API here
-    toast.success("Review submitted successfully!");
-    console.log("Submitting review for product", productId, review);
-    
-    // Remove the reviewed product from the list
-    setPendingReviews(prev => prev.filter(item => item.id !== productId));
-    setReviewsData(prev => {
-      const newData = { ...prev };
-      delete newData[productId];
-      return newData;
-    });
+    try {
+      const product = pendingReviews.find(p => p.productId === productId);
+      if (!product) return;
+
+      const response = await fetch('/api/reviews/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productId,
+          orderId: product.orderId,
+          rating: review.rating,
+          comment: review.comment,
+          reviewImage: review.reviewImage
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Review submitted successfully!");
+        setPendingReviews(prev => prev.filter(item => item.productId !== productId));
+        setReviewsData(prev => {
+          const newData = { ...prev };
+          delete newData[productId];
+          return newData;
+        });
+      } else {
+        toast.error(data.error || "Failed to submit review");
+      }
+    } catch (error) {
+      toast.error("Failed to submit review");
+    }
   };
 
   const skipReview = (productId: string) => {
-    // In a real app, you might want to track skipped reviews
     toast.info("You can review this product later");
-    setPendingReviews(prev => prev.filter(item => item.id !== productId));
+    setPendingReviews(prev => prev.filter(item => item.productId !== productId));
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto">
+    <div className="container mx-auto py-8">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Your Opinion Matters!
         </h1>
         <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
           Share your experience with these products to help other shoppers make better decisions.
-          Your review could be featured and help someone discover their new favorite product!
         </p>
       </div>
 
@@ -111,13 +179,12 @@ export default function PendingReviewDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {pendingReviews.map((item) => (
-            <Card key={item.id} className="hover:shadow-lg transition-shadow bg-gray-800">
+            <Card key={item.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle className="text-lg">{item.productName}</CardTitle>
                 <p className="text-sm text-gray-500">
                   Delivered on {new Date(item.deliveredDate).toLocaleDateString()}
                 </p>
-                <p className="text-xs text-gray-400">Order #{item.orderId}</p>
               </CardHeader>
               <CardContent>
                 <div className="relative aspect-square mb-4">
@@ -130,16 +197,16 @@ export default function PendingReviewDashboard() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-medium mb-2">How would you rate this product?</h3>
+                    <h3 className="font-medium mb-2">Rating</h3>
                     <div className="flex space-x-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
                           type="button"
-                          onClick={() => handleRatingChange(item.id, star)}
+                          onClick={() => handleRatingChange(item.productId, star)}
                         >
                           <Star
-                            className={`w-6 h-6 ${star <= (reviewsData[item.id]?.rating || 0) 
+                            className={`w-6 h-6 ${star <= (reviewsData[item.productId]?.rating || 0) 
                               ? "fill-yellow-400 text-yellow-400" 
                               : "text-gray-300 hover:text-yellow-400"}`}
                           />
@@ -148,124 +215,58 @@ export default function PendingReviewDashboard() {
                     </div>
                   </div>
                   <div>
-                    <h3 className="font-medium mb-2">Share your thoughts</h3>
+                    <h3 className="font-medium mb-2">Your Review</h3>
                     <textarea
-                      placeholder="What did you like or dislike about this product? Would you recommend it?"
+                      placeholder="Share your thoughts about this product..."
                       className="w-full p-3 border rounded-md min-h-[100px] text-sm"
-                      value={reviewsData[item.id]?.comment || ""}
-                      onChange={(e) => handleCommentChange(item.id, e.target.value)}
+                      value={reviewsData[item.productId]?.comment || ""}
+                      onChange={(e) => handleCommentChange(item.productId, e.target.value)}
                     />
+                  </div>
+                  <div>
+                    <h3 className="font-medium mb-2">Add Photo (Optional)</h3>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => e.target.files?.[0] && handleImageUpload(item.productId, e.target.files[0])}
+                      className="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-md file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-emerald-50 file:text-emerald-700
+                        hover:file:bg-emerald-100"
+                    />
+                    {reviewsData[item.productId]?.reviewImage && (
+                      <div className="mt-2 relative w-20 h-20">
+                        <Image
+                          src={reviewsData[item.productId].reviewImage}
+                          alt="Review image"
+                          fill
+                          className="rounded-md object-cover"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button 
                   variant="outline" 
-                  onClick={() => skipReview(item.id)}
+                  onClick={() => skipReview(item.productId)}
                 >
-                  Skip for now
+                  Skip
                 </Button>
                 <Button 
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => submitReview(item.id)}
+                  onClick={() => submitReview(item.productId)}
                 >
-                  Submit Review
+                  Submit
                 </Button>
               </CardFooter>
             </Card>
           ))}
         </div>
       )}
-
-      <div className="mt-12 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 text-center max-w-4xl mx-auto">
-        <h2 className="text-xl font-semibold mb-3">Why your review matters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4">
-            <div className="bg-blue-100 dark:bg-blue-800/50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 2v4" />
-                <path d="m16.24 7.76 2.83-2.83" />
-                <path d="M18 12h4" />
-                <path d="m16.24 16.24 2.83 2.83" />
-                <path d="M12 18v4" />
-                <path d="m4.93 19.07 2.83-2.83" />
-                <path d="M2 12h4" />
-                <path d="m4.93 4.93 2.83 2.83" />
-              </svg>
-            </div>
-            <h3 className="font-medium mb-1">Help Others Decide</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Your honest review helps future shoppers make informed choices.
-            </p>
-          </div>
-          <div className="p-4">
-            <div className="bg-blue-100 dark:bg-blue-800/50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 2v4" />
-                <path d="m16.24 7.76 2.83-2.83" />
-                <path d="M18 12h4" />
-                <path d="m16.24 16.24 2.83 2.83" />
-                <path d="M12 18v4" />
-                <path d="m4.93 19.07 2.83-2.83" />
-                <path d="M2 12h4" />
-                <path d="m4.93 4.93 2.83 2.83" />
-              </svg>
-            </div>
-            <h3 className="font-medium mb-1">Improve Our Products</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              We listen to feedback to make our products even better.
-            </p>
-          </div>
-          <div className="p-4">
-            <div className="bg-blue-100 dark:bg-blue-800/50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 2v4" />
-                <path d="m16.24 7.76 2.83-2.83" />
-                <path d="M18 12h4" />
-                <path d="m16.24 16.24 2.83 2.83" />
-                <path d="M12 18v4" />
-                <path d="m4.93 19.07 2.83-2.83" />
-                <path d="M2 12h4" />
-                <path d="m4.93 4.93 2.83 2.83" />
-              </svg>
-            </div>
-            <h3 className="font-medium mb-1">Earn Rewards</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Get points for each review that can be redeemed for discounts.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

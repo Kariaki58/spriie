@@ -19,7 +19,7 @@ const sidebarConfig = {
         { href: '/user', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },        
         { href: '/user/wallet', label: 'My Wallet', icon: <Wallet className="w-5 h-5" /> },
         { href: '/user/orders', label: 'Orders', icon: <ShoppingCart className="w-5 h-5" /> },
-        { href: '/user/product-tracking', label: 'Product Tracking', icon: <PackageSearch className="w-5 h-5" /> },
+        // { href: '/user/product-tracking', label: 'Product Tracking', icon: <PackageSearch className="w-5 h-5" /> },
         
         { href: '/user/reviews', label: 'My Reviews', icon: <Star className="w-5 h-5" /> },
         { href: '/user/pending-reviews', label: 'Pending Reviews', icon: <Star className="w-5 h-5" /> },
@@ -42,7 +42,7 @@ export default function DashboardLayout({
                 <DashboardSidebar config={sidebarConfig}/>
                 <div className="flex flex-col flex-1 overflow-hidden">
                     <TopNav />
-                    <main className="flex-1 p-2 md:p-4 overflow-y-auto">
+                    <main className="flex-1 p-2 overflow-y-auto">
                         {children}
                     </main>
                 </div>
