@@ -54,6 +54,21 @@ interface PaystackTransaction {
     transaction: string;
 }
 
+interface ProductVariantAttribute {
+  _id: string;
+  name: string;
+  values: Array<{
+    _id: string;
+    name: string;
+    value: string;
+  }>;
+}
+
+interface SelectedVariant {
+  attribute: string;
+  value: string;
+}
+
 interface ICartItem {
   storeId: string;
   productId: string;
@@ -61,8 +76,7 @@ interface ICartItem {
   price: number;
   quantity: number;
   totalPrice: number;
-  size?: string;
-  color?: string;
+  variants?: SelectedVariant[];
   thumbnail?: string;
 }
 
@@ -99,12 +113,28 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
     const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'wallet'>('paystack');
     const [walletBalance, setWalletBalance] = useState<number>(0);
     const [balanceVisible, setBalanceVisible] = useState(false);
+    const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
     const { addToCart: addToCartStore, cartItems } = useCartStore();
     const router = useRouter();
 
-    const totalAmount = product.basePrice * qty;
+    // Calculate the actual price to pay (using discountedPrice if available)
+    const actualPrice = product.discountedPrice || product.basePrice;
+    const totalAmount = actualPrice * qty;
     const canPayWithWallet = walletBalance >= totalAmount;
     const remainingBalance = totalAmount - walletBalance;
+
+    // Initialize selected variants
+    useEffect(() => {
+        if (product.hasVariants && product.attributes) {
+            const initialVariants: Record<string, string> = {};
+            product.attributes.forEach(attr => {
+                if (attr.values.length > 0) {
+                    initialVariants[attr.name] = attr.values[0].value;
+                }
+            });
+            setSelectedVariants(initialVariants);
+        }
+    }, [product]);
 
     useEffect(() => {
         const fetchWalletBalance = async () => {
@@ -132,16 +162,32 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
         }));
     };
 
+    const handleVariantChange = (attributeName: string, value: string) => {
+        setSelectedVariants(prev => ({
+            ...prev,
+            [attributeName]: value
+        }));
+    };
+
     const handleAddToCart = async () => {
         try {
             const cartItem: ICartItem = {
-                storeId: product.storeId,
+                storeId: product.userId._id,
                 productId: product._id,
-                name: product.name,
-                price: product.basePrice,
+                name: product.title,
+                price: actualPrice,
                 quantity: qty,
-                totalPrice: product.basePrice * qty,
+                totalPrice: actualPrice * qty,
+                thumbnail: product.thumbnail,
             };
+
+            // Add variants if they exist
+            if (product.hasVariants) {
+                cartItem.variants = Object.entries(selectedVariants).map(([attribute, value]) => ({
+                    attribute,
+                    value
+                }));
+            }
 
             addToCartStore(cartItem);
 
@@ -175,6 +221,19 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
         setIsProcessing(true);
 
         try {
+            const orderData = {
+                customer: formData,
+                qty,
+                paymentMethod,
+                currency: 'NGN',
+                product: {
+                    ...product,
+                    selectedVariants: product.hasVariants ? selectedVariants : undefined
+                },
+                totalAmount,
+                actualPrice
+            };
+
             if (paymentMethod === 'paystack') {
                 if (!PaystackPop) {
                     throw new Error("Payment SDK not loaded");
@@ -186,7 +245,19 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                     email: formData.email,
                     amount: totalAmount * 100, // Convert to kobo
                     metadata: {
-                        reserve_funds: true
+                        reserve_funds: true,
+                        custom_fields: [
+                            {
+                                display_name: "Product",
+                                variable_name: "product",
+                                value: product.title
+                            },
+                            {
+                                display_name: "Variants",
+                                variable_name: "variants",
+                                value: product.hasVariants ? JSON.stringify(selectedVariants) : "N/A"
+                            }
+                        ]
                     },
                     onSuccess: async (transaction: PaystackTransaction) => {
                         try {
@@ -196,14 +267,10 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                                     'Content-Type': 'application/json',
                                 },
                                 body: JSON.stringify({
+                                    ...orderData,
                                     reference: transaction.reference,
                                     trxref: transaction.trxref,
                                     transaction: transaction.transaction,
-                                    customer: formData,
-                                    qty,
-                                    paymentMethod: 'paystack',
-                                    currency: 'NGN',
-                                    product
                                 }),
                             });
 
@@ -214,6 +281,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                             }
 
                             toast.success(order.message);
+                            // router.push(`/orders/${order.order._id}`);
                         } catch (error: any) {
                             console.error(error);
                             toast.error(error.message || "Something went wrong during order creation");
@@ -236,13 +304,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        customer: formData,
-                        qty,
-                        paymentMethod: 'wallet',
-                        currency: 'NGN',
-                        product
-                    }),
+                    body: JSON.stringify(orderData),
                 });
 
                 const order = await response.json();
@@ -254,6 +316,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                 // Update local wallet balance
                 setWalletBalance(prev => prev - totalAmount);
                 toast.success(order.message);
+                // router.push(`/orders/${order.order._id}`);
             }
         } catch (error: any) {
             console.error(error);
@@ -268,6 +331,40 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
             setPaystackPop(() => module.default);
         });
     }, []);
+
+    const renderVariantSelectors = () => {
+        if (!product.hasVariants || !product.attributes) return null;
+
+        return (
+            <div className="my-4">
+                <p className="text-gray-700 dark:text-gray-300 mb-2">Options</p>
+                <div className="space-y-4">
+                    {product.attributes.map(attr => (
+                        <div key={attr._id}>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                {attr.name}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {attr.values.map(value => (
+                                    <button
+                                        key={value._id}
+                                        onClick={() => handleVariantChange(attr.name, value.value)}
+                                        className={`px-3 py-1 text-sm rounded-full border ${
+                                            selectedVariants[attr.name] === value.value
+                                                ? 'border-emerald-500 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                                : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    >
+                                        {value.value}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
     if (!isMounted) {
         return null;
@@ -302,22 +399,24 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                         <div className="flex gap-4 items-center border border-gray-200 dark:border-gray-700 p-4 rounded-xl bg-white dark:bg-gray-800 my-4 shadow-sm">
                             <img
                                 src={product.thumbnail}
-                                alt={product.name}
+                                alt={product.title}
                                 className="w-20 h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                             />
                             <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-gray-800 dark:text-gray-100 truncate">{product.title}</p>
                                 <div className="flex items-center mt-1">
-                                    <span className="text-lg font-bold text-emerald-600">₦{formatNumberWithCommas(product.basePrice)}</span>
-                                    {product.discount > 0 && (
+                                    <span className="text-lg font-bold text-emerald-600">₦{formatNumberWithCommas(actualPrice)}</span>
+                                    {product.discountPercentage > 0 && (
                                         <span className="ml-2 text-sm line-through text-gray-500 dark:text-gray-400">
-                                            ₦{formatNumberWithCommas((product.basePrice / (1 - product.discount/100)).toFixed(2))}
+                                            ₦{formatNumberWithCommas(product.basePrice)}
                                         </span>
                                     )}
                                 </div>
                             </div>
                         </div>
                         
+                        {renderVariantSelectors()}
+
                         <div className="my-4">
                             <p className="text-gray-700 dark:text-gray-300 mb-2">Description</p>
                             <div className="relative">
@@ -365,7 +464,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
                             <div className="flex justify-between items-center text-lg font-bold">
                                 <span className="text-gray-700 dark:text-gray-300">Total</span>
-                                <span className="text-emerald-600">₦{formatNumberWithCommas((product.basePrice * qty).toFixed(2))}</span>
+                                <span className="text-emerald-600">₦{formatNumberWithCommas(totalAmount)}</span>
                             </div>
                         </div>
 
@@ -378,13 +477,13 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                                     <CreditCard className="w-5 h-5" />
                                     Proceed to Checkout
                                 </button>
-                                {/* <button 
+                                <button 
                                     onClick={handleAddToCart} 
                                     className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-xl font-semibold transition-all shadow-md"
                                 >
                                     <ShoppingCart className="w-5 h-5" />
                                     Add to Cart
-                                </button> */}
+                                </button>
                             </div>
                             <DrawerClose asChild>
                                 <div className='flex gap-3 mt-4'>
@@ -516,7 +615,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                         <div className="mb-6">
                             <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Payment Method</h3>
                             <div className="space-y-3">
-                                {/* <button
+                                <button
                                     onClick={() => setPaymentMethod('paystack')}
                                     className={`w-full flex items-center justify-between p-3 border rounded-lg transition-colors ${
                                         paymentMethod === 'paystack'
@@ -533,7 +632,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                                             <div className="w-2 h-2 rounded-full bg-white"></div>
                                         </div>
                                     )}
-                                </button> */}
+                                </button>
 
                                 <div
                                     onClick={() => setPaymentMethod('wallet')}
@@ -615,7 +714,7 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
                         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-6">
                             <div className="flex justify-between items-center text-lg font-bold">
                                 <span className="text-gray-700 dark:text-gray-300">Total</span>
-                                <span className="text-emerald-600">₦{formatNumberWithCommas(totalAmount.toFixed(2))}</span>
+                                <span className="text-emerald-600">₦{formatNumberWithCommas(totalAmount)}</span>
                             </div>
                         </div>
 

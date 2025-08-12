@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
                 name: item.name,
                 quantity: item.quantity,
                 price: item.price,
+                variants: item.variants,
                 image: item.productId?.thumbnail || item.productId?.images[0] || "https://placehold.co/80x80?text=Product"
             })),
             shippingAddress: order.shippingAddress,

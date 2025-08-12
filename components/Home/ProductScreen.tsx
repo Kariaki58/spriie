@@ -346,7 +346,7 @@ export default function ProductScreen({ product, isActive }: any) {
             <div className="absolute bottom-23 left-0 right-0 p-4 z-10 w-[80%]">
                 <div className="text-white">
                     <div className="flex items-center mb-2">
-                        <span className="font-bold text-3xl">₦{formatNumberWithCommas(product.basePrice)}</span>
+                        <span className="font-bold text-3xl">₦{formatNumberWithCommas(product.discountedPrice)}</span>
                         {product.discount > 0 && (
                         <span className="ml-2 text-sm line-through text-gray-300">
                             ₦{formatNumberWithCommas(Number((product.basePrice / (1 - product.discount / 100)).toFixed(0)))}

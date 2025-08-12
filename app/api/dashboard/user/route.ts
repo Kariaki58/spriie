@@ -142,7 +142,11 @@ export async function GET(): Promise<NextResponse> {
       select: 'title price thumbnail images'
     })
     .lean<LikeItem[]>();
+    
+    console.log("********************8888888whichLIST)))))))))))))))))))(((((((")
 
+    console.log(likes)
+    console.log("********************8888888whichLIST)))))))))))))))))))(((((((")
     // Get recommended products (based on user's order history or other logic)
     const recommendedProducts = await Product.find()
       .sort({ likes: -1 })

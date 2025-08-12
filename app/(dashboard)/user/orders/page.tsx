@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useUserOrders } from '@/hooks/useUserOrders';
 import { Copy, Check } from 'lucide-react';
 
-
 type OrderStatus = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
 
 type OrderItem = {
@@ -11,6 +10,10 @@ type OrderItem = {
   quantity: number;
   price: number;
   image: string;
+  variants?: {
+    attribute: string;
+    value: string;
+  }[];
 };
 
 type ShippingAddress = {
@@ -39,6 +42,9 @@ const UserOrderDashboard = () => {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const { orders, loading, error, cancelOrder, initiateReturn } = useUserOrders();
 
+
+  console.log(orders)
+
   const filteredOrders = activeTab === 'all' 
     ? orders 
     : orders.filter(order => order.status === activeTab);
@@ -58,9 +64,8 @@ const UserOrderDashboard = () => {
   };
 
   const shortenOrderId = (orderId: string) => {
-    return `${orderId.substring(0, 4)}`;
+    return `${orderId.substring(0, 4)}...${orderId.substring(orderId.length - 4)}`;
   };
-
 
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
@@ -177,7 +182,6 @@ const UserOrderDashboard = () => {
                     </span>
                   </div>
                 </div>
-
 
                 {/* Order Items Preview */}
                 <div className="p-4">
@@ -297,6 +301,19 @@ const UserOrderDashboard = () => {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{item.name}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Qty: {item.quantity}</p>
+                        {/* Display variants if they exist */}
+                        {item.variants && item.variants.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {item.variants.map((variant, vIndex) => (
+                              <span 
+                                key={vIndex} 
+                                className="px-2 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300"
+                              >
+                                {variant.attribute}: {variant.value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <p className="text-sm text-gray-800 dark:text-gray-200 mt-1">{formatCurrency(item.price)} each</p>
                       </div>
                       <p className="text-sm font-medium text-gray-800 dark:text-gray-200">

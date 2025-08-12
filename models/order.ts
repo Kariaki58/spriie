@@ -1,14 +1,18 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
+export interface ICartItemVariant {
+  attribute: string;
+  value: string;
+}
+
 export interface ICartItem {
   productId: Types.ObjectId;
   storeId: Types.ObjectId;
   name: string;
-  size?: string;
-  color?: string;
   quantity: number;
   price: number;
-  reviewed?: boolean; // Add this field
+  reviewed?: boolean;
+  variants?: ICartItemVariant[];
 }
 
 export interface IOrder extends Document {
@@ -42,12 +46,15 @@ const OrderSchema = new mongoose.Schema(
       type: [
         {
           productId: { type: mongoose.Types.ObjectId, required: true, ref: "Product" },
+          storeId: { type: mongoose.Types.ObjectId, required: true, ref: "Store" },
           name: { type: String, required: true },
           quantity: { type: Number, required: true, min: 1 },
-          size: { type: String },
-          color: { type: String },
           price: { type: Number, required: true, min: 0 },
-          reviewed: { type: Boolean, default: false } // Add this field
+          reviewed: { type: Boolean, default: false },
+          variants: [{
+            attribute: { type: String },
+            value: { type: String }
+          }],
         },
       ],
       required: true,

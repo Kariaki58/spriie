@@ -9,9 +9,75 @@ import Store from '@/models/store';
 import User from '@/models/user';
 // import { sendOrderConfirmationEmail } from '@/lib/email';
 
+// Define TypeScript interfaces for your data structures
+interface CartItem {
+  productId: typeof Product;
+  storeId: string;
+  quantity: number;
+  size?: string;
+  color?: string;
+  price: number;
+}
 
+interface PopulatedCartItem extends Omit<CartItem, 'productId'> {
+  productId: {
+    _id: string;
+    title: string;
+    images: string[];
+  };
+}
 
-export async function POST(req: NextRequest) {
+interface CartDocument {
+  userId: string;
+  cartItems: PopulatedCartItem[];
+}
+
+interface UserDocument {
+  _id: string;
+  wallet: number;
+  // Add other user properties as needed
+}
+
+interface StoreDocument {
+  _id: string;
+  userId: string;
+  // Add other store properties as needed
+}
+
+interface OrderItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  size?: string;
+  color?: string;
+  price: number;
+  image: string;
+}
+
+interface OrderRequest {
+  shippingAddress: {
+    address: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+  paymentMethod: 'wallet' | 'card' | 'paypal'; // Add other payment methods as needed
+}
+
+interface ProcessedOrderItem {
+  storeId: string;
+  storeOwnerId: string;
+  items: OrderItem[];
+  shippingAddress: OrderRequest['shippingAddress'];
+  subtotal: number;
+  shippingFee: number;
+  tax: number;
+  total: number;
+  status: string;
+}
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const session = await getServerSession(options);
     if (!session?.user) {
@@ -28,8 +94,8 @@ export async function POST(req: NextRequest) {
       Cart.findOne({ userId: session.user.id }).populate({
         path: 'cartItems.productId',
         model: Product
-      }),
-      User.findById(session.user.id)
+      }) as Promise<CartDocument>,
+      User.findById(session.user.id) as Promise<UserDocument>
     ]);
 
     if (!cart || cart.cartItems.length === 0) {
@@ -39,7 +105,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
+    const body: OrderRequest = await req.json();
     const { shippingAddress, paymentMethod } = body;
 
     // Validate required fields
@@ -51,8 +117,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Group cart items by store
-    const itemsByStore: Record<string, typeof cart.cartItems> = {};
-    cart.cartItems.forEach(item => {
+    const itemsByStore: Record<string, PopulatedCartItem[]> = {};
+    cart.cartItems.forEach((item: PopulatedCartItem) => {
       const storeId = item.storeId.toString();
       if (!itemsByStore[storeId]) {
         itemsByStore[storeId] = [];
@@ -61,7 +127,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Create order items for each store and calculate totals
-    const orderItems = await Promise.all(
+    const orderItems: ProcessedOrderItem[] = await Promise.all(
       Object.entries(itemsByStore).map(async ([storeId, items]) => {
         const store = await Store.findById(storeId);
         if (!store) {
@@ -129,7 +195,7 @@ export async function POST(req: NextRequest) {
 
         // Update seller's wallet (credit their account)
         if (paymentMethod === 'wallet') {
-          const seller = await User.findById(item.userId);
+          const seller = await User.findById(item.storeOwnerId) as UserDocument;
           if (seller) {
             // Deduct platform fee (example: 10%)
             const platformFee = item.total * 0.1;

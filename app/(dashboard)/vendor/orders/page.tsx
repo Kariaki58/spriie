@@ -28,6 +28,10 @@ interface Order {
             images: string[];
         };
         quantity: number;
+        variants?: {
+            attribute: string;
+            value: string;
+        }[];
     }[];
     shippingAddress: {
         fullName: string;
@@ -67,10 +71,6 @@ const OrdersManagement = () => {
                     method: 'GET'
                 });
                 const data = await response.json();
-
-                console.log("response...")
-                console.log(data)
-                console.log("ending....")
                 
                 const transformedOrders = data.map((order: any, index: number) => ({
                     _id: order._id,
@@ -87,13 +87,12 @@ const OrdersManagement = () => {
                             price: item.price || 0,
                             images: item.images || []
                         },
-                        quantity: item.quantity || 1
+                        quantity: item.quantity || 1,
+                        variants: item.variants || []
                     })),
                     shippingAddress: order.shippingAddress,
                     userId: order.userId
                 }));
-
-                console.log({transformedOrders})
                 
                 setOrders(transformedOrders);
             } catch (error) {
@@ -539,6 +538,7 @@ const OrdersManagement = () => {
                                                 <thead className="bg-gray-50 dark:bg-gray-700">
                                                     <tr>
                                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product</th>
+                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Variants</th>
                                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
                                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Qty</th>
                                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
@@ -549,6 +549,22 @@ const OrdersManagement = () => {
                                                         <tr key={index}>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                                                 {item.product.name}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                                                {item.variants && item.variants.length > 0 ? (
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {item.variants.map((variant, vIndex) => (
+                                                                            <span 
+                                                                                key={vIndex} 
+                                                                                className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                                                                            >
+                                                                                {variant.attribute}: {variant.value}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-gray-400 dark:text-gray-500">None</span>
+                                                                )}
                                                             </td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                                 {formatCurrency(item.product.price)}
