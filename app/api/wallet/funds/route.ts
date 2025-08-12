@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { options } from '../../auth/options';
 import { NextRequest, NextResponse } from 'next/server';
 import User from '@/models/user';
+import Transaction from '@/models/transaction';
 import connectToDatabase from '@/lib/mongoose';
 
 interface FundWalletRequest {
@@ -69,6 +70,15 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    await Transaction.create({
+      fromUserId: session.user.id,
+      toUserId: session.user.id,
+      type: "fund",
+      amount: amount,
+      status: "pending",
+      paymentMethod: "paystack"
+    })
 
     console.log("the ending...")
 

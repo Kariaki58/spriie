@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("Failed to send reset email:", error);
-      throw new Error("Failed to send password reset email");
+      return NextResponse.json({ error: "Failed to send password reset email" }, { status: 500 });
     }
 
     return NextResponse.json(

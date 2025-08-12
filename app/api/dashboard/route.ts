@@ -204,6 +204,7 @@ export async function POST(req: NextRequest) {
                 orders: dayData?.orders || 0
             };
         });
+        
 
         const dashboardData: DashboardResponse = {
             stats: [

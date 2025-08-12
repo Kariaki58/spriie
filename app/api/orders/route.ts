@@ -9,6 +9,9 @@ import { getServerSession } from "next-auth";
 import { options } from "../auth/options";
 import Customer from "@/models/customer";
 import mongoose from "mongoose";
+import { buyerOrderPlacedEmail, sellerOrderPlacedEmail } from "@/lib/email/email-templates";
+import { resend } from "@/lib/email/resend";
+
 
 export async function GET(req: NextRequest) {
   try {
@@ -73,9 +76,6 @@ export async function POST(req: NextRequest) {
       currency,
       paymentMethod,
       qty,
-      reference,
-      trxref,
-      transaction,
     } = body;
 
     // Validate required fields
@@ -201,14 +201,12 @@ export async function POST(req: NextRequest) {
 
     // Create transaction record
     const transactionDb = new Transaction({
-      userId: user._id,
-      storeId: order.storeId,
-      reference: reference,
-      status: "paid",
-      transaction: transaction,
-      trxref: trxref,
-      paymentMethod,
-      amount: totalCost
+      fromUserId: session.user.id,
+      toUserId: userWithStore._id,
+      type: "buy",
+      amount: totalCost,
+      status: "completed",
+      paymentMethod
     });
 
     await transactionDb.save();
@@ -228,6 +226,36 @@ export async function POST(req: NextRequest) {
       customerDb.orders.push(order._id);
     }
     await customerDb.save();
+
+    const { error } = await resend.emails.send({
+      from: 'Spriie <contact@spriie.com>',
+      to: userWithStore.email,
+      ...sellerOrderPlacedEmail(order._id, userWithStore.name),
+    });
+
+
+    if (error) {
+      await resend.emails.send({
+        from: 'Spriie <contact@spriie.com>',
+        to: userWithStore.email,
+        ...sellerOrderPlacedEmail(order._id, userWithStore.name),
+      });
+    }
+
+
+    const { error: feedback } = await resend.emails.send({
+      from: 'Spriie <contact@spriie.com>',
+      to: userWithStore.email,
+      ...buyerOrderPlacedEmail(order._id, customer.fullName),
+    })
+
+    if (feedback) {
+      await resend.emails.send({
+        from: 'Spriie <contact@spriie.com>',
+        to: customer.email,
+        ...buyerOrderPlacedEmail(order._id, customer.fullName),
+      })
+    }
 
     return NextResponse.json(
       { message: "Order Placed", orderId: order._id },

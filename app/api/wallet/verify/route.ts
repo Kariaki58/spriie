@@ -3,6 +3,7 @@ import { options } from '../../auth/options';
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongoose';
 import User from '@/models/user';
+import Transaction from '@/models/transaction';
 
 interface PaystackVerificationResponse {
   status: boolean;
@@ -56,6 +57,8 @@ export async function GET(req: NextRequest) {
     const result = (await verifyRes.json()) as PaystackVerificationResponse;
 
     if (!result.status || result.data.status !== 'success') {
+
+      await Transaction.findOneAndUpdate({ fromUserId: session.user.id }, { status: "failed" }, { new: true })
       return NextResponse.json(
         { success: false, error: result.message || 'Verification failed' },
         { status: 400 }
@@ -91,6 +94,7 @@ export async function GET(req: NextRequest) {
     await user.save();
 
     console.log("updatedd")
+    await Transaction.findOneAndUpdate({ fromUserId: session.user.id }, { status: "completed" }, { new: true })
 
     return NextResponse.json({
       success: true,
@@ -102,6 +106,7 @@ export async function GET(req: NextRequest) {
 
   } catch (error) {
     console.error('Paystack verify error:', error);
+    await Transaction.findOneAndUpdate({ fromUserId: session.user.id }, { status: "failed" }, { new: true })
     return NextResponse.json(
       { success: false, error: 'Something went wrong' },
       { status: 500 }

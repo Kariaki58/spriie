@@ -1,66 +1,43 @@
 import mongoose, { Document } from "mongoose";
 
 export interface ITransaction extends Document {
-  userId: mongoose.Types.ObjectId;
-  storeId: mongoose.Types.ObjectId;
-  paymentMethod: "wallet" | "paystack";
-  reference?: string;
+  fromUserId: mongoose.Types.ObjectId;
+  toUserId: mongoose.Types.ObjectId;
+  type: "fund" | "withdraw" | "buy" | "sale" | "refund";
+  amount: number;
   status: "pending" | "paid" | "failed";
-  message?: string;
-  transaction?: string;
-  trxef?: string;
+  paymentMethod: "wallet" | "paystack";
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const TransactionSchema = new mongoose.Schema(
   {
-    userId: {
+    fromUserId: {
       type: mongoose.Types.ObjectId,
-      required: true,
-      ref: "User"
+      ref: "User",
+      required: true
     },
-    storeId: {
+    toUserId: {
       type: mongoose.Types.ObjectId,
-      required: true,
-      ref: "Store"
+      ref: "User",
+      required: true
     },
-    paymentMethod: {
+    type: {
       type: String,
-      required: true,
-      enum: ["wallet", "paystack"]
+      enum: ["fund", "withdraw", "buy", "sale", "refund"]
     },
-    reference: {
-      type: String,
-      unique: true,
-      sparse: true,
-      validate: {
-        validator: function (this: any) {
-          return this.paymentMethod === "wallet" || !!this.reference;
-        },
-        message: "Reference is required for Paystack payments."
-      }
+    amount: {
+      type: Number,
+      required: true
     },
     status: {
       type: String,
-      required: true,
-      enum: ["pending", "paid", "failed"]
+      enum: ["pending", "completed", "failed"]
     },
-    transaction: {
+    paymentMethod: {
       type: String,
-      validate: {
-        validator: function (this: any) {
-          return this.paymentMethod === "wallet" || !!this.transaction;
-        },
-        message: "Transaction ID is required for Paystack payments."
-      }
-    },
-    trxef: {
-      type: String,
-      validate: {
-        validator: function (this: any) {
-          return this.paymentMethod === "wallet" || !!this.trxef;
-        },
-        message: "TRXEF is required for Paystack payments."
-      }
+      enum: ["wallet", "paystack"]
     }
   },
   {

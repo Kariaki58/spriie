@@ -140,6 +140,7 @@ const OrdersManagement = () => {
             if (statusUpdate === 'cancelled' && cancellationReason) {
                 updateData.cancellationReason = cancellationReason;
             }
+            console.log(selectedOrder._id)
 
             const response = await fetch(`/api/orders/${selectedOrder._id}`, {
                 method: 'PUT',

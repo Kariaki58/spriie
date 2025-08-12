@@ -1,136 +1,56 @@
 "use client";
-import { Wallet, ArrowUpRight, ArrowDownLeft, CreditCard, Banknote, History, Eye, EyeOff, Loader2, ChevronsRight, ChevronsLeft } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useEffect, useState } from 'react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Wallet, ArrowUpRight, ArrowDownLeft, CreditCard, Banknote, History, Eye, EyeOff, Loader2, ChevronsRight, ChevronsLeft } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useEffect, useState } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-const transactions = [
-  {
-    id: 1,
-    type: 'deposit',
-    amount: 50000,
-    date: '2023-10-15T14:30:00',
-    status: 'completed',
-    reference: 'Bank Transfer',
-    currency: 'NGN'
-  },
-  {
-    id: 2,
-    type: 'withdrawal',
-    amount: 20000,
-    date: '2023-10-14T10:15:00',
-    status: 'completed',
-    reference: 'Withdrawal to Bank',
-    currency: 'NGN'
-  },
-  {
-    id: 3,
-    type: 'sale',
-    amount: 15000,
-    date: '2023-10-12T16:45:00',
-    status: 'completed',
-    reference: 'Order #12345',
-    currency: 'NGN'
-  },
-  {
-    id: 4,
-    type: 'deposit',
-    amount: 30000,
-    date: '2023-10-10T09:20:00',
-    status: 'pending',
-    reference: 'Card Payment',
-    currency: 'NGN'
-  },
-  {
-    id: 5,
-    type: 'withdrawal',
-    amount: 10000,
-    date: '2023-10-08T11:30:00',
-    status: 'failed',
-    reference: 'Withdrawal to Bank',
-    currency: 'NGN'
-  },
-  {
-    id: 6,
-    type: 'sale',
-    amount: 25000,
-    date: '2023-10-05T13:15:00',
-    status: 'completed',
-    reference: 'Order #12344',
-    currency: 'NGN'
-  },
-  {
-    id: 7,
-    type: 'deposit',
-    amount: 45000,
-    date: '2023-10-03T08:00:00',
-    status: 'completed',
-    reference: 'USSD Payment',
-    currency: 'NGN'
-  },
-  {
-    id: 8,
-    type: 'sale',
-    amount: 18000,
-    date: '2023-10-01T17:25:00',
-    status: 'completed',
-    reference: 'Order #12343',
-    currency: 'NGN'
-  },
-  {
-    id: 9,
-    type: 'withdrawal',
-    amount: 5000,
-    date: '2023-09-29T10:00:00',
-    status: 'pending',
-    reference: 'Bank Transfer',
-    currency: 'NGN'
-  },
-  {
-    id: 10,
-    type: 'deposit',
-    amount: 60000,
-    date: '2023-09-27T12:10:00',
-    status: 'completed',
-    reference: 'Bank Transfer',
-    currency: 'NGN'
-  },
-  {
-    id: 11,
-    type: 'sale',
-    amount: 22000,
-    date: '2023-09-25T09:45:00',
-    status: 'completed',
-    reference: 'Order #12342',
-    currency: 'NGN'
-  },
-  
-];
-
+type TransactionType = 'fund' | 'withdraw' | 'buy' | 'sale' | 'refund';
+type TransactionStatus = 'pending' | 'completed' | 'failed';
 type WalletType = 'naira' | 'dollar';
+type PaymentMethod = 'card' | 'bank' | '';
+type SortField = 'createdAt' | 'amount';
+type SortOrder = 'asc' | 'desc';
+
+interface ApiTransaction {
+  _id: string;
+  fromUserId: {
+    _id: string;
+    name?: string;
+    email?: string;
+  };
+  toUserId: {
+    _id: string;
+    name?: string;
+    email?: string;
+  };
+  type: TransactionType;
+  amount: number;
+  status: TransactionStatus;
+  paymentMethod: 'wallet' | 'paystack';
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function WalletDisplay() {
-  const [balance, setBallance] = useState<number>(0);
+  const [balance, setBalance] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'balance' | 'withdraw' | 'deposit'>('balance');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [balanceVisible, setBalanceVisible] = useState(false);
-
-  // Calculate paginated transactions
-  const totalPages = Math.ceil(transactions.length / itemsPerPage);
-  const paginatedTransactions = transactions.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [apiTransactions, setApiTransactions] = useState<ApiTransaction[]>([]);
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
 
   // Deposit state
   const [amount, setAmount] = useState<string>('');
   const [walletType, setWalletType] = useState<WalletType>('naira');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank' | ''>('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   
@@ -139,20 +59,62 @@ export default function WalletDisplay() {
   const [accountNumber, setAccountNumber] = useState('');
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
 
-  
   useEffect(() => {
     const fetchUserProfile = async () => {
-        console.log('inside')
+      try {
         const res = await fetch("/api/profile", {
-            method: "GET"
-        })
-        const data = (await res.json()).message;
-
-        setBallance(data.wallet)
-    }
+          method: "GET"
+        });
+        const data = await res.json();
+        setBalance(data.message.wallet);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        toast.error("Failed to load wallet balance");
+      }
+    };
 
     fetchUserProfile();
-  }, [])
+  }, []);
+
+  const fetchTransactions = async () => {
+    setIsLoadingTransactions(true);
+    try {
+      const res = await fetch(
+        `/api/transactions?page=${currentPage}&limit=${itemsPerPage}&sortField=${sortField}&sortOrder=${sortOrder}`
+      );
+      const data = await res.json();
+      
+      if (res.ok) {
+        setApiTransactions(data.transactions);
+        setTotalTransactions(data.pagination.total);
+      } else {
+        toast.error(data.error || 'Failed to fetch transactions');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch transactions');
+      console.error(error);
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'balance') {
+      fetchTransactions();
+    }
+  }, [currentPage, sortField, sortOrder, activeTab]);
+
+  const totalPages = Math.ceil(totalTransactions / itemsPerPage);
+
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+    setCurrentPage(1); // Reset to first page when changing sort
+  };
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,8 +153,6 @@ export default function WalletDisplay() {
       }
 
       const data = await response.json();
-
-      console.log("DATA------------>", data)
       
       if (data.paymentUrl) {
         window.location.href = data.paymentUrl;
@@ -237,7 +197,6 @@ export default function WalletDisplay() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        //   'Authorization': `Bearer ${session?.accessToken}`
         },
         body: JSON.stringify({
           amount: amountValue,
@@ -253,7 +212,7 @@ export default function WalletDisplay() {
 
       const data = await response.json();
       toast.success('Withdrawal successful!');
-    //   setBalance(prev => prev - amountValue);
+      setBalance(prev => prev - amountValue);
       setActiveTab('balance');
     } catch (err) {
       console.error('Withdrawal error:', err);
@@ -282,9 +241,52 @@ export default function WalletDisplay() {
     }).format(amount);
   };
 
+  const getTransactionIcon = (type: TransactionType) => {
+    switch (type) {
+      case 'fund':
+        return <ArrowDownLeft className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
+      case 'withdraw':
+        return <ArrowUpRight className="h-4 w-4 text-rose-600 dark:text-rose-400" />;
+      case 'buy':
+      case 'sale':
+      case 'refund':
+        return <Banknote className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
+      default:
+        return <Banknote className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+    }
+  };
+
+  const getTransactionBgColor = (type: TransactionType) => {
+    switch (type) {
+      case 'fund':
+        return 'bg-emerald-100 dark:bg-emerald-900/50';
+      case 'withdraw':
+        return 'bg-rose-100 dark:bg-rose-900/50';
+      case 'buy':
+      case 'sale':
+      case 'refund':
+        return 'bg-amber-100 dark:bg-amber-900/50';
+      default:
+        return 'bg-gray-100 dark:bg-gray-900/50';
+    }
+  };
+
+  const getStatusColor = (status: TransactionStatus) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400';
+      case 'pending':
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-400';
+      case 'failed':
+        return 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-400';
+    }
+  };
+
   const getPaginationItems = () => {
     const pages = [];
-    const maxVisiblePages = 5;
+    const maxVisiblePages = 10;
     
     pages.push(1);
     
@@ -356,7 +358,8 @@ export default function WalletDisplay() {
           </p>
         </CardContent>
       </Card>
-      {/* Action Tabs - Made responsive */}
+
+      {/* Action Tabs */}
       <div className="flex flex-col sm:flex-row gap-2">
         <Button
           variant={activeTab === 'balance' ? 'default' : 'outline'}
@@ -396,11 +399,31 @@ export default function WalletDisplay() {
                     <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                       Type
                     </TableHead>
-                    <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                      Amount
+                    <TableHead 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap cursor-pointer"
+                      onClick={() => handleSort('amount')}
+                    >
+                      <div className="flex items-center">
+                        Amount
+                        {sortField === 'amount' && (
+                          <span className="ml-1">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </TableHead>
-                    <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                      Date
+                    <TableHead 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap cursor-pointer"
+                      onClick={() => handleSort('createdAt')}
+                    >
+                      <div className="flex items-center">
+                        Date
+                        {sortField === 'createdAt' && (
+                          <span className="ml-1">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </TableHead>
                     <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                       Reference
@@ -411,80 +434,76 @@ export default function WalletDisplay() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                  {paginatedTransactions.map((transaction) => (
-                    <TableRow 
-                      key={transaction.id} 
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <TableCell className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {transaction.type === 'deposit' && (
-                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mr-3">
-                              <ArrowDownLeft className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                            </div>
-                          )}
-                          {transaction.type === 'withdrawal' && (
-                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center mr-3">
-                              <ArrowUpRight className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-                            </div>
-                          )}
-                          {transaction.type === 'sale' && (
-                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mr-3">
-                              <Banknote className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                            </div>
-                          )}
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell
-                        className={`px-6 py-4 whitespace-nowrap text-sm ${
-                          transaction.type === 'deposit' || transaction.type === 'sale'
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-rose-600 dark:text-rose-400'
-                        }`}
-                      >
-                        {transaction.type === 'withdrawal' ? '-' : '+'}
-                        {formatCurrency(transaction.amount)}
-                      </TableCell>
-                      <TableCell className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {formatDate(transaction.date)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-gray-100">
-                          {transaction.reference}
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            transaction.status === 'completed'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400'
-                              : transaction.status === 'pending'
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-400'
-                              : 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-400'
-                          }`}
-                        >
-                          {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                        </span>
+                  {isLoadingTransactions ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        <Loader2 className="w-8 h-8 mx-auto animate-spin" />
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : apiTransactions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        No transactions found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    apiTransactions.map((transaction) => (
+                      <TableRow 
+                        key={transaction._id} 
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <TableCell className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className={`flex-shrink-0 h-8 w-8 rounded-full ${getTransactionBgColor(transaction.type)} flex items-center justify-center mr-3`}>
+                              {getTransactionIcon(transaction.type)}
+                            </div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className={`px-6 py-4 whitespace-nowrap text-sm ${
+                            transaction.type === 'fund' || transaction.type === 'sale' || transaction.type === 'refund'
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-rose-600 dark:text-rose-400'
+                          }`}
+                        >
+                          {transaction.type === 'withdraw' ? '-' : '+'}
+                          {formatCurrency(transaction.amount)}
+                        </TableCell>
+                        <TableCell className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(transaction.createdAt)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-gray-100">
+                            {transaction.paymentMethod === 'paystack' ? 'Paystack Payment' : 'Wallet Transfer'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(transaction.status)}`}
+                          >
+                            {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
           </div>
 
-          {/* Pagination remains the same */}
+          {/* Pagination */}
           <div className="flex items-center justify-center gap-1 mt-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || isLoadingTransactions}
             >
               <ChevronsLeft />
             </Button>
@@ -496,6 +515,7 @@ export default function WalletDisplay() {
                 size="sm"
                 className={page === '...' ? 'pointer-events-none' : ''}
                 onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                disabled={isLoadingTransactions}
               >
                 {page}
               </Button>
@@ -505,7 +525,7 @@ export default function WalletDisplay() {
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || isLoadingTransactions}
             >
               <ChevronsRight />
             </Button>
@@ -513,9 +533,9 @@ export default function WalletDisplay() {
         </div>
       )}
 
-      {/* Withdraw and Deposit sections remain the same but with responsive improvements */}
+      {/* Withdraw Tab */}
       {activeTab === 'withdraw' && (
-        <Card className='bg-gray-800'>
+        <Card>
           <CardHeader>
             <CardTitle>Withdraw Funds</CardTitle>
           </CardHeader>
@@ -588,8 +608,9 @@ export default function WalletDisplay() {
         </Card>
       )}
 
+      {/* Deposit Tab */}
       {activeTab === 'deposit' && (
-        <Card className='bg-gray-800'>
+        <Card>
           <CardHeader>
             <CardTitle>Deposit Funds</CardTitle>
           </CardHeader>
@@ -620,7 +641,7 @@ export default function WalletDisplay() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="naira">Naira Wallet</SelectItem>
-                    {/* <SelectItem value="dollar">Dollar Wallet</SelectItem> */}
+                    <SelectItem value="dollar">Dollar Wallet</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

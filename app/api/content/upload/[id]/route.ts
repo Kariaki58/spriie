@@ -9,6 +9,7 @@ import Store from "@/models/store";
 import { options } from "@/app/api/auth/options";
 import { getServerSession } from "next-auth";
 import { Types } from "mongoose";
+import Comment from "@/models/comments";
 
 
 const getPublicIdFromUrl = (url: string) => {
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         const product = await Product.findById(id)
         .populate('category')
         .populate('tags')
-        .populate('comments')
+        // .populate('comments')
         .populate('likes')
 
         console.log({product})

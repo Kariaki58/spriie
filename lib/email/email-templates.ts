@@ -98,7 +98,7 @@ export function sellerOrderPlacedEmail(orderId: string, sellerName: string) {
           <div style="${section}">
             <p style="${paragraph}">Hello <strong>${sellerName}</strong>,</p>
             <p style="${paragraph}">You just received a new order with ID <strong>ORD-${orderId}</strong>.</p>
-            <a href="${BASE_URL}/seller/orders/${orderId}" style="${button}">View Dashboard</a>
+            <a href="${BASE_URL}/vendor/orders" style="${button}">View Dashboard</a>
             <p style="font-size: 15px; color: #6B7280;">
               Click the button to view the order details in your seller dashboard.
             </p>
@@ -109,6 +109,28 @@ export function sellerOrderPlacedEmail(orderId: string, sellerName: string) {
     `,
   };
 }
+
+export function buyerOrderPlacedEmail(orderId: string, buyerName: string) {
+  return {
+    subject: "Your Order Was Placed Successfully!",
+    html: `
+      <div style="${container}">
+        <div style="${contentBox}">
+          <div style="${header}">Order Confirmation</div>
+          <div style="${section}">
+            <p style="${paragraph}">Hi <strong>${buyerName}</strong>,</p>
+            <p style="${paragraph}">Thank you for your purchase! Your order with ID <strong>ORD-${orderId}</strong> has been placed successfully.</p>
+            <p style="font-size: 15px; color: #6B7280;">
+              You can track your order status and see details in your buyer dashboard.
+            </p>
+          </div>
+          <div style="${footer}">Spriie</div>
+        </div>
+      </div>
+    `,
+  };
+}
+
 
 
 export function sellerOrderStatusUpdateEmail(
