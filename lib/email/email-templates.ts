@@ -109,6 +109,80 @@ export function sellerOrderPlacedEmail(orderId: string, sellerName: string) {
   };
 }
 
+export function adminOrderProblemReportEmail(
+  orderId: string,
+  buyerName: string,
+  problemDescription: string
+) {
+  return {
+    subject: `🚨 Problem Reported with Order #${orderId}`,
+    html: `
+      <div style="${container}">
+        <div style="${contentBox}">
+          <div style="${header.replace('#10B981', '#EF4444')}">Problem Reported</div>
+          <div style="${section}">
+            <p style="${paragraph}">
+              Buyer <strong>${buyerName}</strong> has reported a problem with order <strong>ORD-${orderId}</strong>.
+            </p>
+            
+            <div style="background-color: #FEE2E2; border-radius: 8px; padding: 16px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #B91C1C;">Reported Problem:</h3>
+              <p style="${pStyle}">${problemDescription}</p>
+            </div>
+
+            <a href="${process.env.NEXT_PUBLIC_API_URL}/admin/orders/${orderId}" style="${button.replace('#10B981', '#EF4444')}">
+              Review Order
+            </a>
+            
+            <p style="font-size: 15px; color: #6B7280; margin-top: 20px;">
+              Please take appropriate action and contact both buyer and seller.
+            </p>
+          </div>
+          <div style="${footer.replace('#10B981', '#EF4444')}">Spriie Support</div>
+        </div>
+      </div>
+    `,
+  };
+}
+
+export function sellerOrderProblemReportEmail(
+  orderId: string,
+  sellerName: string,
+  buyerName: string,
+  problemDescription: string
+) {
+  return {
+    subject: `Buyer Reported Problem with Order #${orderId}`,
+    html: `
+      <div style="${container}">
+        <div style="${contentBox}">
+          <div style="${header.replace('#10B981', '#F59E0B')}">Problem Reported</div>
+          <div style="${section}">
+            <p style="${paragraph}">Hello <strong>${sellerName}</strong>,</p>
+            <p style="${paragraph}">
+              Buyer <strong>${buyerName}</strong> has reported a problem with order <strong>ORD-${orderId}</strong>.
+            </p>
+            
+            <div style="background-color: #FEF3C7; border-radius: 8px; padding: 16px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #B45309;">Reported Problem:</h3>
+              <p style="${pStyle}">${problemDescription}</p>
+            </div>
+
+            <p style="${paragraph}">
+              Our support team has been notified and will contact you shortly to resolve this issue.
+            </p>
+            
+            <a href="${process.env.NEXT_PUBLIC_API_URL}/vendor/orders/${orderId}" style="${button.replace('#10B981', '#F59E0B')}">
+              View Order
+            </a>
+          </div>
+          <div style="${footer.replace('#10B981', '#F59E0B')}">Spriie Support</div>
+        </div>
+      </div>
+    `,
+  };
+}
+
 export function buyerOrderPlacedEmail(orderId: string, buyerName: string) {
   return {
     subject: "Your Order Was Placed Successfully!",
@@ -162,6 +236,87 @@ export function buyerOrderUpdateEmail(orderId: string, buyerName: string, status
             </p>
             ` : ''}
             ` : ''}
+          </div>
+          <div style="${footer}">Spriie</div>
+        </div>
+      </div>
+    `,
+  };
+}
+
+export function sellerFundsReleasedEmail(
+  sellerName: string,
+  orderId: string,
+  amount: number,
+  platformFee: number,
+  netAmount: number
+) {
+  return {
+    subject: "Funds Released for Your Order",
+    html: `
+      <div style="${container}">
+        <div style="${contentBox}">
+          <div style="${header}">Payment Released</div>
+          <div style="${section}">
+            <p style="${paragraph}">Hello <strong>${sellerName}</strong>,</p>
+            <p style="${paragraph}">
+              The funds for order <strong>ORD-${orderId}</strong> have been successfully released to your account.
+            </p>
+            
+            <div style="background-color: #F3F4F6; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: left;">
+              <p style="${pStyle}"><strong>Order ID:</strong> ORD-${orderId}</p>
+              <p style="${pStyle}"><strong>Total Amount:</strong> $${amount.toFixed(2)}</p>
+              <p style="${pStyle}"><strong>Platform Fee (5%):</strong> $${platformFee.toFixed(2)}</p>
+              <p style="${pStyle}"><strong>Net Amount Credited:</strong> $${netAmount.toFixed(2)}</p>
+            </div>
+
+            <p style="${paragraph}">
+              The amount has been added to your Spriie wallet balance and is available for withdrawal.
+            </p>
+            
+            <a href="${process.env.NEXT_PUBLIC_API_URL}/vendor/wallet" style="${button}">View Wallet</a>
+            
+            <p style="font-size: 15px; color: #6B7280; margin-top: 20px;">
+              Thank you for selling with Spriie!
+            </p>
+          </div>
+          <div style="${footer}">Spriie</div>
+        </div>
+      </div>
+    `,
+  };
+}
+
+export function buyerFundsReleasedConfirmationEmail(
+  buyerName: string,
+  orderId: string,
+  sellerName: string
+) {
+  return {
+    subject: "Your Order is Complete",
+    html: `
+      <div style="${container}">
+        <div style="${contentBox}">
+          <div style="${header}">Order Completed</div>
+          <div style="${section}">
+            <p style="${paragraph}">Hi <strong>${buyerName}</strong>,</p>
+            <p style="${paragraph}">
+              Thank you for confirming delivery of order <strong>ORD-${orderId}</strong>.
+              The payment has been released to <strong>${sellerName}</strong>.
+            </p>
+            
+            <p style="${paragraph}">
+              We hope you're satisfied with your purchase! If you have any questions, 
+              please don't hesitate to contact us.
+            </p>
+            
+            <a href="${process.env.NEXT_PUBLIC_API_URL}/user/orders/${orderId}" style="${button}">
+              View Order Details
+            </a>
+            
+            <p style="font-size: 15px; color: #6B7280; margin-top: 20px;">
+              Thank you for shopping with Spriie!
+            </p>
           </div>
           <div style="${footer}">Spriie</div>
         </div>

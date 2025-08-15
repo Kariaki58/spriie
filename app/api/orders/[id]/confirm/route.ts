@@ -7,7 +7,8 @@ import User from "@/models/user";
 import { getServerSession } from "next-auth";
 import { options } from "@/app/api/auth/options";
 import connectToDatabase from "@/lib/mongoose";
-
+import { sellerFundsReleasedEmail, buyerFundsReleasedConfirmationEmail } from "@/lib/email/email-templates";
+import { resend } from "@/lib/email/resend";
 
 
 export async function POST(
@@ -93,6 +94,32 @@ export async function POST(
     );
 
     await mongoSession.commitTransaction();
+
+    try {
+      await resend.emails.send({
+        from: 'Spriie <contact@spriie.com>',
+        to: escrow.sellerId.email,
+        ...sellerFundsReleasedEmail(
+          escrow.sellerId.name,
+          orderId,
+          escrow.amount,
+          platformFee,
+          sellerAmount
+        )
+      })
+      
+      await resend.emails.send({
+        from: 'Spriie <contact@spriie.com>',
+        to: escrow.sellerId.email,
+        ...buyerFundsReleasedConfirmationEmail(
+          escrow.buyerId.name,
+          orderId,
+          escrow.sellerId.name
+        )
+      })
+    } catch (emailError) {
+      console.error("Failed to send confirmation emails:", emailError);
+    }
 
     return NextResponse.json({ 
       success: true,

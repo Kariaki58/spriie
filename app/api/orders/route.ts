@@ -12,6 +12,7 @@ import mongoose from "mongoose";
 import { buyerOrderPlacedEmail, sellerOrderPlacedEmail } from "@/lib/email/email-templates";
 import { resend } from "@/lib/email/resend";
 import Escrow from "@/models/EscrowTransaction";
+import EmailJob from "@/models/emailJob";
 
 
 
@@ -230,19 +231,16 @@ export async function POST(req: NextRequest) {
 
     await mongoSession.commitTransaction();
 
-    // Send emails after commit
-    await Promise.all([
-      resend.emails.send({
-        from: "Spriie <contact@spriie.com>",
+    await EmailJob.create([
+      {
         to: userWithStore.email,
         ...sellerOrderPlacedEmail(order._id, userWithStore.name),
-      }),
-      resend.emails.send({
-        from: "Spriie <contact@spriie.com>",
+      },
+      {
         to: customer.email,
         ...buyerOrderPlacedEmail(order._id, customer.fullName),
-      }),
-    ]);
+      }
+    ], { session: mongoSession });
 
     return NextResponse.json({ message: "Order Placed", orderId: order._id }, { status: 200 });
   } catch (error: any) {

@@ -15,18 +15,54 @@ export interface ICartItem {
   variants?: ICartItemVariant[];
 }
 
+export interface IProblemReport {
+  reportedAt: Date;
+  description: string;
+  status: "pending_review" | "resolved" | "rejected";
+  resolvedAt?: Date;
+  resolvedBy?: Types.ObjectId;
+  resolutionNotes?: string;
+}
+
 export interface IOrder extends Document {
   userId: Types.ObjectId;
   storeId: Types.ObjectId;
   cartItems: ICartItem[];
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "returned";
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "returned" | "problem_reported";
   shippingAddress: Record<string, any>;
   paymentMethod: string;
   cancellationReason?: string;
   escrow?: Types.ObjectId;
+  problemReports?: IProblemReport[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+const ProblemReportSchema = new Schema({
+  reportedAt: {
+    type: Date,
+    default: Date.now
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ["pending_review", "resolved", "rejected"],
+    default: "pending_review"
+  },
+  resolvedAt: {
+    type: Date
+  },
+  resolvedBy: {
+    type: Schema.Types.ObjectId,
+    ref: "User"
+  },
+  resolutionNotes: {
+    type: String
+  }
+}, { _id: false });
 
 const OrderSchema = new mongoose.Schema(
   {
@@ -67,7 +103,7 @@ const OrderSchema = new mongoose.Schema(
     status: {
       type: String,
       required: true,
-      enum: ["pending", "processing", "shipped", "delivered", "cancelled", "returned"],
+      enum: ["pending", "processing", "shipped", "delivered", "problem_reported", "cancelled", "returned"],
       default: "pending",
     },
     shippingAddress: {
@@ -79,6 +115,10 @@ const OrderSchema = new mongoose.Schema(
       required: true,
       enum: ["wallet", "bank_transfer", "cash_on_delivery", "paystack"],
     },
+    problemReports: {
+      type: [ProblemReportSchema],
+      default: []
+    }
   },
   {
     timestamps: true,
