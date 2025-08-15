@@ -11,6 +11,8 @@ import Customer from "@/models/customer";
 import mongoose from "mongoose";
 import { buyerOrderPlacedEmail, sellerOrderPlacedEmail } from "@/lib/email/email-templates";
 import { resend } from "@/lib/email/resend";
+import Escrow from "@/models/EscrowTransaction";
+
 
 
 export async function GET(req: NextRequest) {
@@ -66,77 +68,65 @@ export async function GET(req: NextRequest) {
   }
 }
 
+const verifyTransaction = async (reference: string) => {
+  const res = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+    },
+  });
+  const data = await res.json();
+  return data;
+};
+
 export async function POST(req: NextRequest) {
+  const session = await getServerSession(options);
+
+  if (!session) {
+    return NextResponse.json({ error: "You are not logged in" }, { status: 401 });
+  }
+
+  const { product, customer, currency, paymentMethod, qty, reference } = await req.json();
+
+  if (!product || !customer || !currency || !paymentMethod) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  await connectToDatabase();
+  const mongoSession = await mongoose.startSession();
+  mongoSession.startTransaction();
+
   try {
-    const body = await req.json();
-    const session = await getServerSession(options);
-    const {
-      product,
-      customer,
-      currency,
-      paymentMethod,
-      qty,
-    } = body;
-
-    // Validate required fields
-    if (!product || !customer || !currency || !paymentMethod) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+    // Verify payment first (if Paystack)
+    if (paymentMethod === "paystack") {
+      const verification = await verifyTransaction(reference);
+      if (!(verification.status && verification.data.status === "success")) {
+        throw new Error("Payment not confirmed with Paystack");
+      }
     }
 
-    if (!session) {
-      return NextResponse.json(
-        { error: "You are not logged in" },
-        { status: 401 }
-      );
-    }
+    const user = await User.findById(session.user.id).session(mongoSession);
+    if (!user) throw new Error("User not found");
 
-    await connectToDatabase();
+    const dbProduct = await Product.findById(product._id).session(mongoSession);
+    if (!dbProduct) throw new Error("Product not found");
 
-    const user = await User.findOne({ _id: session.user?.id });
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    // Find the product
-    const dbProduct = await Product.findById(product._id);
-    if (!dbProduct) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check stock
     if (qty > dbProduct.quantity) {
-      return NextResponse.json(
-        { error: "Insufficient stock available" },
-        { status: 400 }
-      );
+      throw new Error("Insufficient stock available");
     }
 
     const storeWithProduct = await Store.findOne({
       products: new mongoose.Types.ObjectId(dbProduct._id),
-    });
+    }).session(mongoSession);
 
-    if (!storeWithProduct) {
-      return NextResponse.json(
-        { error: "Could not find product in any store" },
-        { status: 400 }
-      );
-    }
+    if (!storeWithProduct) throw new Error("Could not find product in any store");
 
-    const actualPrice = product.discountedPrice || product.basePrice;
+    const actualPrice = product.discountedPrice;
     const totalCost = qty * actualPrice;
 
-    const userWithStore = await User.findOne({ _id: storeWithProduct.userId });
+    const userWithStore = await User.findById(storeWithProduct.userId).session(mongoSession);
+    if (!userWithStore) throw new Error("Seller not found");
 
-    // Prepare cart item with variants
+    // Prepare cart item
     const cartItem: any = {
       productId: dbProduct._id,
       storeId: storeWithProduct._id,
@@ -145,10 +135,6 @@ export async function POST(req: NextRequest) {
       price: actualPrice,
     };
 
-
-    console.log(product.selectedVariants)
-
-    // Add variants if they exist
     if (product.selectedVariants && Object.keys(product.selectedVariants).length > 0) {
       cartItem.variants = Object.entries(product.selectedVariants).map(([attribute, value]) => ({
         attribute,
@@ -175,44 +161,59 @@ export async function POST(req: NextRequest) {
       paymentMethod,
     });
 
-    await order.save();
-
-    // Update product inventory
-    dbProduct.inventory -= qty;
-    await dbProduct.save();
-
-    // Handle payment
-    if (paymentMethod === "wallet") {
-      if (user.wallet < totalCost) {
-        return NextResponse.json(
-          { error: "Insufficient wallet balance" },
-          { status: 400 }
-        );
-      }
-
-      user.wallet -= totalCost;
-      userWithStore.wallet += totalCost;
-      await user.save();
-    } else if (paymentMethod === "paystack") {
-      userWithStore.wallet += totalCost;
-    }
-
-    await userWithStore.save();
-
-    // Create transaction record
-    const transactionDb = new Transaction({
-      fromUserId: session.user.id,
-      toUserId: userWithStore._id,
-      type: "buy",
+    // Create escrow
+    const escrow = new Escrow({
+      orderId: order._id,
+      buyerId: user._id,
+      sellerId: userWithStore._id,
       amount: totalCost,
-      status: "completed",
-      paymentMethod
+      status: "pending",
+      paymentMethod,
+      releaseConditions: {
+        timeBasedRelease: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
     });
 
-    await transactionDb.save();
+    await order.save({ session: mongoSession });
+    dbProduct.quantity -= qty;
+    await dbProduct.save({ session: mongoSession });
 
-    // Update or create customer record
-    let customerDb = await Customer.findOne({ email: customer.email });
+    if (paymentMethod === "wallet") {
+      if (user.wallet < totalCost) throw new Error("Insufficient wallet balance");
+        user.wallet -= totalCost;
+        await user.save({ session: mongoSession });
+
+        escrow.status = "held";
+        await escrow.save({ session: mongoSession });
+
+        const walletTransaction = new Transaction({
+          fromUserId: user._id,
+          toUserId: userWithStore._id,
+          type: "held",
+          amount: totalCost,
+          status: "completed",
+          paymentMethod: "wallet",
+          escrowId: escrow._id,
+        });
+        await walletTransaction.save({ session: mongoSession });
+    } else if (paymentMethod === "paystack") {
+        escrow.status = "held";
+        await escrow.save({ session: mongoSession });
+
+        const paystackTransaction = new Transaction({
+          fromUserId: user._id,
+          toUserId: userWithStore._id,
+          type: "held",
+          amount: totalCost,
+          status: "completed",
+          paymentMethod: "paystack",
+          escrowId: escrow._id,
+        });
+        await paystackTransaction.save({ session: mongoSession });
+    }
+
+    // Add or update customer
+    let customerDb = await Customer.findOne({ email: customer.email }).session(mongoSession);
     if (!customerDb) {
       customerDb = new Customer({
         userId: user._id,
@@ -220,52 +221,35 @@ export async function POST(req: NextRequest) {
         name: customer.fullName,
         email: customer.email,
         avatar: user.avatar,
-        orders: [order._id]
+        orders: [order._id],
       });
     } else {
       customerDb.orders.push(order._id);
     }
-    await customerDb.save();
+    await customerDb.save({ session: mongoSession });
 
-    const { error } = await resend.emails.send({
-      from: 'Spriie <contact@spriie.com>',
-      to: userWithStore.email,
-      ...sellerOrderPlacedEmail(order._id, userWithStore.name),
-    });
+    await mongoSession.commitTransaction();
 
-
-    if (error) {
-      await resend.emails.send({
-        from: 'Spriie <contact@spriie.com>',
+    // Send emails after commit
+    await Promise.all([
+      resend.emails.send({
+        from: "Spriie <contact@spriie.com>",
         to: userWithStore.email,
         ...sellerOrderPlacedEmail(order._id, userWithStore.name),
-      });
-    }
-
-
-    const { error: feedback } = await resend.emails.send({
-      from: 'Spriie <contact@spriie.com>',
-      to: userWithStore.email,
-      ...buyerOrderPlacedEmail(order._id, customer.fullName),
-    })
-
-    if (feedback) {
-      await resend.emails.send({
-        from: 'Spriie <contact@spriie.com>',
+      }),
+      resend.emails.send({
+        from: "Spriie <contact@spriie.com>",
         to: customer.email,
         ...buyerOrderPlacedEmail(order._id, customer.fullName),
-      })
-    }
+      }),
+    ]);
 
-    return NextResponse.json(
-      { message: "Order Placed", orderId: order._id },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "Order Placed", orderId: order._id }, { status: 200 });
   } catch (error: any) {
+    await mongoSession.abortTransaction();
     console.error("Order creation error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to create order" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || "Failed to create order" }, { status: 500 });
+  } finally {
+    mongoSession.endSession();
   }
 }

@@ -69,10 +69,6 @@ export default function ProductScreen({ product, isActive }: any) {
     const lastTapRef = useRef(0);
 
     const { data: session } = useSession();
-
-
-    console.log({session});
-    console.log({ product })
     
     const mediaItems = [
         { type: 'video', url: product.video },

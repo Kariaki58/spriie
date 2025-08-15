@@ -118,7 +118,8 @@ export default function BuyDrawer({ product, showFullDescription, toggleDescript
     const router = useRouter();
 
     // Calculate the actual price to pay (using discountedPrice if available)
-    const actualPrice = product.discountedPrice || product.basePrice;
+    console.log(product.discountedPrice)
+    const actualPrice = product.discountedPrice;
     const totalAmount = actualPrice * qty;
     const canPayWithWallet = walletBalance >= totalAmount;
     const remainingBalance = totalAmount - walletBalance;

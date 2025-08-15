@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import { options } from "@/app/api/auth/options";
 
 
-export async function PATCH(req: NextRequest, { params }: { params: { orderId: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
     try {
         await connectToDatabase();
         const { id } = await params;

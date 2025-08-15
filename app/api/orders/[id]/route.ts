@@ -6,8 +6,27 @@ import Store from "@/models/store";
 import { getServerSession } from "next-auth";
 import { options } from "../../auth/options";
 import { NextRequest, NextResponse } from "next/server";
+import { buyerOrderUpdateEmail } from "@/lib/email/email-templates";
+import { resend } from "@/lib/email/resend";
+import crypto from 'crypto';
+import Escrow from "@/models/EscrowTransaction";
 
-export async function GET(req: NextRequest, { params }: { params: { orderId: string } }) {
+
+export function generateHash(
+  input?: string,
+  algorithm: string = 'sha256',
+  length: number = 32
+): string {
+  if (!input) {
+    return crypto.randomBytes(length).toString('hex');
+  }
+
+  const hash = crypto.createHash(algorithm);
+  hash.update(input + crypto.randomBytes(16).toString('hex'));
+  return hash.digest('hex');
+}
+
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(options);
     if (!session?.user) {
@@ -85,10 +104,10 @@ export async function PUT(req: NextRequest,  { params }: {  params: { id: string
         }
 
         if (session.user.role !== "seller") {
-            return NextResponse.json(
-                { error: "you are not a seller" },
-                { status: 400 }
-            )
+          return NextResponse.json(
+            { error: "you are not a seller" },
+            { status: 400 }
+          )
         }
 
         await connectToDatabase();
@@ -111,36 +130,65 @@ export async function PUT(req: NextRequest,  { params }: {  params: { id: string
         const store = await Store.findOne({ userId: user._id })
 
         if (!store) {
-        return NextResponse.json(
+          return NextResponse.json(
             { error: "you don not have a store " },
             { status: 404 }
-        )
+          )
         }
 
         const orders = await Order.findOne({ 
-            storeId: store._id,
-            _id: id
-        });
+          storeId: store._id,
+          _id: id
+        }).populate("userId");
 
         if (!orders) {
-            return NextResponse.json(
-                { error: "we could not find your order" },
-                { status: 404 }
-            )
+          return NextResponse.json(
+            { error: "we could not find your order" },
+            { status: 404 }
+          )
         }
+        console.log("------------------------------")
+        console.log(orders)
+        console.log("------------------------------")
+
 
         orders.status = data.status;
 
         if (data.cancellationReason) {
-            orders.cancellationReason = data.cancellationReason
+          orders.cancellationReason = data.cancellationReason
         }
 
         await orders.save();
 
-        console.log({ orders })
+        const confirmationToken = generateHash();
+
+        if (data.status === "delivered") {
+          const findEscrow = await Escrow.findOne({ orderId: orders._id, sellerId: session.user.id, buyerId: orders.userId._id });
+
+          console.log("seen")
+          console.log(findEscrow)
+          findEscrow.releaseConditions.deliveryConfirmation = true;
+          findEscrow.confirmationToken = confirmationToken
+
+          await findEscrow.save();
+        }
+
+        if (data.status === "shipped" || data.status === "delivered") {
+          console.log("we are inside")
+          console.log(orders.userId.email)
+          const { error} = await resend.emails.send({
+            from: 'Spriie <contact@spriie.com>',
+            to: orders.userId.email,
+            ...buyerOrderUpdateEmail(orders._id, orders.userId.name, data.status, confirmationToken)
+          })
+          console.log(error)
+
+          console.log("sendtttt...")
+        }
+        
         return NextResponse.json(
-            { message: "order updated successfully" },
-            { status: 200 }
+          { message: "order updated successfully" },
+          { status: 200 }
         )
     } catch (error) {
         console.log(error);

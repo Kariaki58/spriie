@@ -23,6 +23,7 @@ export interface IOrder extends Document {
   shippingAddress: Record<string, any>;
   paymentMethod: string;
   cancellationReason?: string;
+  escrow?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,7 +47,7 @@ const OrderSchema = new mongoose.Schema(
       type: [
         {
           productId: { type: mongoose.Types.ObjectId, required: true, ref: "Product" },
-          // storeId: { type: mongoose.Types.ObjectId, required: true, ref: "Store" },
+          storeId: { type: mongoose.Types.ObjectId, required: true, ref: "Store" },
           name: { type: String, required: true },
           quantity: { type: Number, required: true, min: 1 },
           price: { type: Number, required: true, min: 0 },
@@ -58,6 +59,10 @@ const OrderSchema = new mongoose.Schema(
         },
       ],
       required: true,
+    },
+    escrow: {
+      type: mongoose.Types.ObjectId,
+      ref: "Escrow"
     },
     status: {
       type: String,

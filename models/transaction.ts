@@ -7,6 +7,8 @@ export interface ITransaction extends Document {
   amount: number;
   status: "pending" | "paid" | "failed";
   paymentMethod: "wallet" | "paystack";
+  escrowRelated?: boolean;
+  escrowId?: mongoose.Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -25,7 +27,7 @@ const TransactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["fund", "withdraw", "buy", "sale", "refund"]
+      enum: ["fund", "withdraw", "pending", "held", "released", "refunded", "disputed"]
     },
     amount: {
       type: Number,
@@ -38,7 +40,9 @@ const TransactionSchema = new mongoose.Schema(
     paymentMethod: {
       type: String,
       enum: ["wallet", "paystack"]
-    }
+    },
+    escrowRelated: { type: Boolean, default: false },
+    escrowId: { type: mongoose.Types.ObjectId, ref: "Escrow" }
   },
   {
     timestamps: true

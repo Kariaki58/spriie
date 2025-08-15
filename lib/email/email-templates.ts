@@ -1,4 +1,3 @@
-const BASE_URL = "http://localhost:3000";
 
 const container = `
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -75,7 +74,7 @@ export function adminOrderReceivedEmail(orderId: string) {
           <div style="${header}">New Order Received</div>
           <div style="${section}">
             <p style="${paragraph}">An order with ID <strong>ORD-${orderId}</strong> has been placed.</p>
-            <a href="${BASE_URL}/admin/orders/${orderId}" style="${button}">View Dashboard</a>
+            <a href="${process.env.NEXT_PUBLIC_API_URL}/admin/orders/${orderId}" style="${button}">View Dashboard</a>
             <p style="font-size: 15px; color: #6B7280;">
               Click the button to manage the order in your admin dashboard.
             </p>
@@ -98,7 +97,7 @@ export function sellerOrderPlacedEmail(orderId: string, sellerName: string) {
           <div style="${section}">
             <p style="${paragraph}">Hello <strong>${sellerName}</strong>,</p>
             <p style="${paragraph}">You just received a new order with ID <strong>ORD-${orderId}</strong>.</p>
-            <a href="${BASE_URL}/vendor/orders" style="${button}">View Dashboard</a>
+            <a href="${process.env.NEXT_PUBLIC_API_URL}/vendor/orders" style="${button}">View Dashboard</a>
             <p style="font-size: 15px; color: #6B7280;">
               Click the button to view the order details in your seller dashboard.
             </p>
@@ -132,41 +131,37 @@ export function buyerOrderPlacedEmail(orderId: string, buyerName: string) {
 }
 
 
-
-export function sellerOrderStatusUpdateEmail(
-  orderId: string,
-  status: "shipped" | "delivered" | "cancelled",
-  reason?: string
-) {
-  let extraContent = "";
-
-  if (status === "cancelled" && reason) {
-    extraContent = `<p style="${paragraph}"><strong>Reason:</strong> ${reason}</p>`;
-  }
-
-  if (status === "delivered") {
-    extraContent += `
-      <p style="${paragraph}">
-        <a href="${BASE_URL}/review/${orderId}" style="color: #134E4A; text-decoration: underline;">Leave a Review</a>
-      </p>
-      <p style="${paragraph}">
-        <a href="${BASE_URL}/returns/${orderId}" style="color: #134E4A; text-decoration: underline;">
-          Return Product (valid for 24 hours)
-        </a>
-      </p>
-    `;
-  }
-
+export function buyerOrderUpdateEmail(orderId: string, buyerName: string, status: string, comfirmToken?: string | null) {
   return {
-    subject: `Order #${orderId} Status Updated: ${status.toUpperCase()}`,
+    subject: `Your Order has been ${status}!`,
     html: `
       <div style="${container}">
         <div style="${contentBox}">
-          <div style="${header}">Order Status: ${status.charAt(0).toUpperCase() + status.slice(1)}</div>
+          <div style="${header}">Order Update</div>
           <div style="${section}">
-            <p style="${paragraph}">Your order with ID <strong>ORD-${orderId}</strong> has been updated to <strong>${status}</strong>.</p>
-            ${extraContent}
-            <a href="${BASE_URL}/seller/orders/${orderId}" style="${button}">View Order</a>
+            <p style="${paragraph}">Hi <strong>${buyerName}</strong>,</p>
+            <p style="${paragraph}">Your order with ID <strong>ORD-${orderId}</strong> has been updated to: <strong>${status}</strong>.</p>
+            <p style="font-size: 15px; color: #6B7280;">
+              You can track your order status and see details in your buyer dashboard.
+            </p>
+            ${status.toLowerCase() === 'shipped' ? `
+            <p style="${paragraph}">
+              Your items are on the way! You'll receive tracking information soon.
+            </p>
+            ` : ''}
+            ${status.toLowerCase() === 'delivered' ? `
+            <p style="${paragraph}">
+              Your order has been delivered. We hope you're happy with your purchase!
+            </p>
+            ${comfirmToken ? `
+            <p style="${paragraph}">
+              <a href="${process.env.NEXT_PUBLIC_API_URL}/user/orders/${orderId}?comfirmToken=${comfirmToken}" 
+                 style="background-color: #4F46E5; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                Confirm Delivery
+              </a>
+            </p>
+            ` : ''}
+            ` : ''}
           </div>
           <div style="${footer}">Spriie</div>
         </div>
@@ -174,7 +169,6 @@ export function sellerOrderStatusUpdateEmail(
     `,
   };
 }
-
 
 export function sellerReturnRequestEmail(
   orderId: string,
@@ -190,7 +184,7 @@ export function sellerReturnRequestEmail(
           <div style="${section}">
             <p style="${paragraph}">${buyerName} has requested to return an item from order <strong>ORD-${orderId}</strong>.</p>
             <p style="${paragraph}"><strong>Reason:</strong> ${reason}</p>
-            <a href="${BASE_URL}/seller/orders/${orderId}" style="${button}">Review Request</a>
+            <a href="${process.env.NEXT_PUBLIC_API_URL}/seller/orders/${orderId}" style="${button}">Review Request</a>
           </div>
           <div style="${footer}">Spriie</div>
         </div>
@@ -230,7 +224,7 @@ export function passwordResetConfirmationEmail() {
           <div style="${header}">Password Updated</div>
           <div style="${section}">
             <p style="${paragraph}">Your Spriie account password has been successfully updated.</p>
-            <p style="${paragraph}">If you didn't make this change, please <a href="${BASE_URL}/contact" style="${linkStyle}">contact us</a> immediately.</p>
+            <p style="${paragraph}">If you didn't make this change, please <a href="${process.env.NEXT_PUBLIC_API_URL}/contact" style="${linkStyle}">contact us</a> immediately.</p>
           </div>
           <div style="${footer}">Spriie</div>
         </div>
