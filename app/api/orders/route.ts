@@ -229,8 +229,6 @@ export async function POST(req: NextRequest) {
     }
     await customerDb.save({ session: mongoSession });
 
-    await mongoSession.commitTransaction();
-
     await EmailJob.create([
       {
         to: userWithStore.email,
@@ -241,6 +239,9 @@ export async function POST(req: NextRequest) {
         ...buyerOrderPlacedEmail(order._id, customer.fullName),
       }
     ], { session: mongoSession });
+
+    await mongoSession.commitTransaction();
+
 
     return NextResponse.json({ message: "Order Placed", orderId: order._id }, { status: 200 });
   } catch (error: any) {

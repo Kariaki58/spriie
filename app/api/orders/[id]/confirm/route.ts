@@ -4,11 +4,14 @@ import Escrow from "@/models/EscrowTransaction";
 import Order from "@/models/order";
 import Transaction from "@/models/transaction";
 import User from "@/models/user";
+import EmailJob from "@/models/emailJob";
 import { getServerSession } from "next-auth";
 import { options } from "@/app/api/auth/options";
 import connectToDatabase from "@/lib/mongoose";
-import { sellerFundsReleasedEmail, buyerFundsReleasedConfirmationEmail } from "@/lib/email/email-templates";
-import { resend } from "@/lib/email/resend";
+import {
+  sellerFundsReleasedEmail,
+  buyerFundsReleasedConfirmationEmail,
+} from "@/lib/email/email-templates";
 
 
 export async function POST(
@@ -25,9 +28,9 @@ export async function POST(
 
   const { id: orderId } = await params;
   const { confirmToken } = await req.json();
-  
-  let mongoSession;
-  
+
+  let mongoSession: mongoose.ClientSession | null = null;
+
   try {
     await connectToDatabase();
     mongoSession = await mongoose.startSession();
@@ -36,21 +39,21 @@ export async function POST(
     // 1. Verify the escrow record
     const escrow = await Escrow.findOne({ orderId })
       .session(mongoSession)
-      .populate('buyerId sellerId');
+      .populate("buyerId sellerId");
 
     if (!escrow) {
       throw new Error("Escrow record not found");
     }
 
-    const isTokenValid = (
+    const isTokenValid =
       escrow.confirmationToken === confirmToken &&
       escrow.confirmationTokenExpires &&
-      new Date(escrow.confirmationTokenExpires) > new Date()
-    );
+      new Date(escrow.confirmationTokenExpires) > new Date();
 
     if (!isTokenValid) {
       throw new Error(
-        escrow.confirmationTokenExpires && new Date(escrow.confirmationTokenExpires) <= new Date()
+        escrow.confirmationTokenExpires &&
+          new Date(escrow.confirmationTokenExpires) <= new Date()
           ? "Confirmation link has expired"
           : "Invalid confirmation token"
       );
@@ -62,25 +65,22 @@ export async function POST(
 
     escrow.releaseConditions.buyerConfirmation = true;
     escrow.status = "released";
-
-
     escrow.confirmationToken = null;
     escrow.confirmationTokenExpires = null;
 
     await escrow.save({ session: mongoSession });
 
-   await Transaction.findOneAndUpdate(
+    await Transaction.findOneAndUpdate(
       { escrowId: escrow._id, type: "held" },
       {
-          type: "released",
-          amount: sellerAmount,
-          platformFee,
-          releasedAt: new Date()
+        type: "released",
+        amount: sellerAmount,
+        platformFee,
+        releasedAt: new Date(),
       },
       { session: mongoSession }
     );
 
-    // ✅ Credit seller wallet only with their share
     await User.findByIdAndUpdate(
       escrow.sellerId._id,
       { $inc: { wallet: sellerAmount } },
@@ -95,39 +95,46 @@ export async function POST(
 
     await mongoSession.commitTransaction();
 
-    try {
-      await resend.emails.send({
-        from: 'Spriie <contact@spriie.com>',
-        to: escrow.sellerId.email,
-        ...sellerFundsReleasedEmail(
-          escrow.sellerId.name,
-          orderId,
-          escrow.amount,
-          platformFee,
-          sellerAmount
-        )
-      })
-      
-      await resend.emails.send({
-        from: 'Spriie <contact@spriie.com>',
-        to: escrow.sellerId.email,
-        ...buyerFundsReleasedConfirmationEmail(
-          escrow.buyerId.name,
-          orderId,
-          escrow.sellerId.name
-        )
-      })
-    } catch (emailError) {
-      console.error("Failed to send confirmation emails:", emailError);
-    }
+    const sellerEmailData = sellerFundsReleasedEmail(
+      escrow.sellerId.name,
+      orderId,
+      escrow.amount,
+      platformFee,
+      sellerAmount
+    );
 
-    return NextResponse.json({ 
-      success: true,
-      message: "Funds released to seller successfully",
-      amount: sellerAmount,
-      sellerId: escrow.sellerId._id 
-    }, { status: 200 });
+    const buyerEmailData = buyerFundsReleasedConfirmationEmail(
+      escrow.buyerId.name,
+      orderId,
+      escrow.sellerId.name
+    );
 
+    await EmailJob.insertMany([
+      {
+        from: "Spriie <contact@spriie.com>",
+        to: escrow.sellerId.email,
+        subject: sellerEmailData.subject,
+        html: sellerEmailData.html,
+        sent: false,
+      },
+      {
+        from: "Spriie <contact@spriie.com>",
+        to: escrow.buyerId.email,
+        subject: buyerEmailData.subject,
+        html: buyerEmailData.html,
+        sent: false,
+      },
+    ]);
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Funds released to seller successfully, emails queued",
+        amount: sellerAmount,
+        sellerId: escrow.sellerId._id,
+      },
+      { status: 200 }
+    );
   } catch (error: any) {
     if (mongoSession) {
       await mongoSession.abortTransaction();
