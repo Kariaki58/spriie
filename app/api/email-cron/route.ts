@@ -1,10 +1,11 @@
 import connectToDatabase from "@/lib/mongoose";
 import EmailJob from "@/models/emailJob";
 import { resend } from "@/lib/email/resend";
+import { NextRequest } from "next/server";
 
 const MAX_ATTEMPTS = 3;
 
-export async function GET() {
+export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
   } catch (dbErr) {
@@ -17,6 +18,7 @@ export async function GET() {
 
   let jobs;
   try {
+    console.log("running........JOBS....")
     jobs = await EmailJob.find({ sent: false, failed: false })
       .sort({ createdAt: 1 })
       .limit(20);
