@@ -35,12 +35,16 @@ export async function POST(req: NextRequest) {
 
   for (const job of jobs) {
     try {
-      await resend.emails.send({
+      const { error } = await resend.emails.send({
         from: job.from,
         to: job.to,
         subject: job.subject,
         html: job.html,
       });
+
+      if (error) {
+        throw new Error("error occurred while sending emails")
+      }
 
       job.sent = true;
       job.sentAt = new Date();

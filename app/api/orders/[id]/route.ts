@@ -11,6 +11,7 @@ import crypto from 'crypto';
 import Escrow from "@/models/EscrowTransaction";
 import EmailJob from "@/models/emailJob";
 import mongoose from "mongoose";
+import { resend } from "@/lib/email/resend";
 
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -70,6 +71,7 @@ export function generateHash(
   return hash.digest("hex");
 }
 
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -78,7 +80,7 @@ export async function PUT(
   mongoSession.startTransaction();
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -151,7 +153,6 @@ export async function PUT(
 
     const confirmationToken = generateHash();
 
-    // Escrow update if delivered
     if (data.status === "delivered") {
       const findEscrow = await Escrow.findOne({
         orderId: order._id,
@@ -166,22 +167,31 @@ export async function PUT(
       }
     }
 
-    // Queue email instead of sending directly
     if (["shipped", "delivered"].includes(data.status)) {
-      await EmailJob.create(
-        [
-          {
-            to: order.userId.email,
-            ...buyerOrderUpdateEmail(
-              order._id,
-              order.userId.name,
-              data.status,
-              confirmationToken
-            ),
-          },
-        ],
-        { session: mongoSession }
+      const emailPayload = buyerOrderUpdateEmail(
+        order._id,
+        order.userId.name,
+        data.status,
+        confirmationToken
       );
+
+      const { error } = await resend.emails.send({
+        from: "Spriie <contact@spriie.com>",
+        to: order.userId.email,
+        ...emailPayload,
+      });
+
+      if (error) {
+        await EmailJob.create(
+          [
+            {
+              to: order.userId.email,
+              ...emailPayload,
+            },
+          ],
+          { session: mongoSession }
+        );
+      }
     }
 
     await mongoSession.commitTransaction();

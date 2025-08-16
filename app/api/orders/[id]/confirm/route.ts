@@ -12,7 +12,7 @@ import {
   sellerFundsReleasedEmail,
   buyerFundsReleasedConfirmationEmail,
 } from "@/lib/email/email-templates";
-
+import { resend } from "@/lib/email/resend";
 
 export async function POST(
   req: NextRequest,
@@ -36,7 +36,7 @@ export async function POST(
     mongoSession = await mongoose.startSession();
     mongoSession.startTransaction();
 
-    // 1. Verify the escrow record
+    // 1. Verify escrow
     const escrow = await Escrow.findOne({ orderId })
       .session(mongoSession)
       .populate("buyerId sellerId");
@@ -109,27 +109,44 @@ export async function POST(
       escrow.sellerId.name
     );
 
-    await EmailJob.insertMany([
-      {
+    const { error: sellerError } = await resend.emails.send({
+      from: "Spriie <contact@spriie.com>",
+      to: escrow.sellerId.email,
+      subject: sellerEmailData.subject,
+      html: sellerEmailData.html,
+    });
+
+    if (sellerError) {
+      await EmailJob.create({
         from: "Spriie <contact@spriie.com>",
         to: escrow.sellerId.email,
         subject: sellerEmailData.subject,
         html: sellerEmailData.html,
         sent: false,
-      },
-      {
+      });
+    }
+
+    const { error: buyerError } = await resend.emails.send({
+      from: "Spriie <contact@spriie.com>",
+      to: escrow.buyerId.email,
+      subject: buyerEmailData.subject,
+      html: buyerEmailData.html,
+    });
+
+    if (buyerError) {
+      await EmailJob.create({
         from: "Spriie <contact@spriie.com>",
         to: escrow.buyerId.email,
         subject: buyerEmailData.subject,
         html: buyerEmailData.html,
         sent: false,
-      },
-    ]);
+      });
+    }
 
     return NextResponse.json(
       {
         success: true,
-        message: "Funds released to seller successfully, emails queued",
+        message: "Funds released successfully, emails sent/queued",
         amount: sellerAmount,
         sellerId: escrow.sellerId._id,
       },

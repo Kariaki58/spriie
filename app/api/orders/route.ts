@@ -15,7 +15,6 @@ import Escrow from "@/models/EscrowTransaction";
 import EmailJob from "@/models/emailJob";
 
 
-
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(options);
@@ -213,7 +212,6 @@ export async function POST(req: NextRequest) {
         await paystackTransaction.save({ session: mongoSession });
     }
 
-    // Add or update customer
     let customerDb = await Customer.findOne({ email: customer.email }).session(mongoSession);
     if (!customerDb) {
       customerDb = new Customer({
@@ -229,16 +227,35 @@ export async function POST(req: NextRequest) {
     }
     await customerDb.save({ session: mongoSession });
 
-    await EmailJob.create([
-      {
-        to: userWithStore.email,
-        ...sellerOrderPlacedEmail(order._id, userWithStore.name),
-      },
-      {
-        to: customer.email,
-        ...buyerOrderPlacedEmail(order._id, customer.fullName),
-      }
-    ], { session: mongoSession });
+
+    const sellerEmail = sellerOrderPlacedEmail(order._id, userWithStore.name);
+    const { error: sellerError } = await resend.emails.send({
+      from: "Spriie <contact@spriie.com>",
+      to: userWithStore.email,
+      ...sellerEmail,
+    });
+
+    const buyerEmail = buyerOrderPlacedEmail(order._id, user.name);
+    const { error: buyerError } = await resend.emails.send({
+      from: "Spriie <contact@spriie.com>",
+      to: user.email,
+      ...buyerEmail,
+    });
+
+    const failedJobs = [];
+
+    if (sellerError) {
+      failedJobs.push({ to: userWithStore.email, ...sellerEmail });
+    }
+    if (buyerError) {
+      failedJobs.push({ to: user.email, ...buyerEmail });
+    }
+
+    
+    if (failedJobs.length > 0) {
+      await EmailJob.create(failedJobs, { session: mongoSession, ordered: true });
+    }
+
 
     await mongoSession.commitTransaction();
 
