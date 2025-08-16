@@ -25,6 +25,9 @@ const TransactionSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
+    platformFee: {
+      type: Number
+    },
     type: {
       type: String,
       enum: ["fund", "withdraw", "pending", "held", "released", "refunded", "disputed"]

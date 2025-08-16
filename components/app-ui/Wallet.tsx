@@ -1,5 +1,5 @@
 "use client";
-import { Wallet, ArrowUpRight, ArrowDownLeft, CreditCard, Banknote, History, Eye, EyeOff, Loader2, ChevronsRight, ChevronsLeft } from 'lucide-react';
+import { Wallet, ArrowUpRight, ArrowDownLeft, CreditCard, Banknote, History, Eye, EyeOff, Loader2, ChevronsRight, ChevronsLeft, Clock, CheckCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -7,13 +7,16 @@ import { Input } from '@/components/ui/input';
 import { useEffect, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 
-type TransactionType = 'fund' | 'withdraw' | 'buy' | 'sale' | 'refund';
 type TransactionStatus = 'pending' | 'completed' | 'failed';
 type WalletType = 'naira' | 'dollar';
 type PaymentMethod = 'card' | 'bank' | '';
 type SortField = 'createdAt' | 'amount';
 type SortOrder = 'asc' | 'desc';
+
+
+type TransactionType = 'fund' | 'withdraw' | 'buy' | 'sale' | 'refund' | 'held' | 'released';
 
 interface ApiTransaction {
   _id: string;
@@ -29,6 +32,7 @@ interface ApiTransaction {
   };
   type: TransactionType;
   amount: number;
+  platformFee: number;
   status: TransactionStatus;
   paymentMethod: 'wallet' | 'paystack';
   createdAt: string;
@@ -46,6 +50,7 @@ export default function WalletDisplay() {
   const [apiTransactions, setApiTransactions] = useState<ApiTransaction[]>([]);
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const { data: session } = useSession();
 
   // Deposit state
   const [amount, setAmount] = useState<string>('');
@@ -114,6 +119,13 @@ export default function WalletDisplay() {
       setSortOrder('desc');
     }
     setCurrentPage(1); // Reset to first page when changing sort
+  };
+  
+  const isSeller = (transaction: ApiTransaction) => {
+    const currentUserId = session?.user?.id;
+    if (!currentUserId) {}
+    else
+      return transaction.toUserId._id === currentUserId;
   };
 
   const handleDeposit = async (e: React.FormEvent) => {
@@ -251,6 +263,10 @@ export default function WalletDisplay() {
       case 'sale':
       case 'refund':
         return <Banknote className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
+      case 'held':
+        return <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />;
+      case 'released':
+        return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />;
       default:
         return <Banknote className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
     }
@@ -266,6 +282,10 @@ export default function WalletDisplay() {
       case 'sale':
       case 'refund':
         return 'bg-amber-100 dark:bg-amber-900/50';
+      case 'held':
+        return 'bg-yellow-100 dark:bg-yellow-900/50';
+      case 'released':
+        return 'bg-green-100 dark:bg-green-900/50';
       default:
         return 'bg-gray-100 dark:bg-gray-900/50';
     }
@@ -462,16 +482,25 @@ export default function WalletDisplay() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell
-                          className={`px-6 py-4 whitespace-nowrap text-sm ${
-                            transaction.type === 'fund' || transaction.type === 'sale' || transaction.type === 'refund'
+                        <TableCell className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className={`text-sm font-medium ${
+                            transaction.type === 'fund' || transaction.type === 'sale' || transaction.type === 'refund' || transaction.type === 'released'
                               ? 'text-emerald-600 dark:text-emerald-400'
+                              : transaction.type === 'held'
+                              ? 'text-yellow-600 dark:text-yellow-400'
                               : 'text-rose-600 dark:text-rose-400'
-                          }`}
-                        >
-                          {transaction.type === 'withdraw' ? '-' : '+'}
-                          {formatCurrency(transaction.amount)}
-                        </TableCell>
+                          }`}>
+                            {transaction.type === 'withdraw' || transaction.type === 'buy' ? '-' : '+'}
+                            {formatCurrency(transaction.amount)}
+                          </span>
+                          {transaction.type === 'released' && isSeller(transaction) && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Fee: {formatCurrency(transaction.platformFee)} (5%)
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                         <TableCell className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             {formatDate(transaction.createdAt)}

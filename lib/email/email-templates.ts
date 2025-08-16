@@ -265,8 +265,8 @@ export function sellerFundsReleasedEmail(
             
             <div style="background-color: #F3F4F6; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: left;">
               <p style="${pStyle}"><strong>Order ID:</strong> ORD-${orderId}</p>
-              <p style="${pStyle}"><strong>Total Amount:</strong> $${amount.toFixed(2)}</p>
-              <p style="${pStyle}"><strong>Platform Fee (5%):</strong> $${platformFee.toFixed(2)}</p>
+              <p style="${pStyle}"><strong>Total Amount:</strong> ₦${amount.toFixed(2)}</p>
+              <p style="${pStyle}"><strong>Platform Fee (5%):</strong> ₦${platformFee.toFixed(2)}</p>
               <p style="${pStyle}"><strong>Net Amount Credited:</strong> $${netAmount.toFixed(2)}</p>
             </div>
 
@@ -274,7 +274,8 @@ export function sellerFundsReleasedEmail(
               The amount has been added to your Spriie wallet balance and is available for withdrawal.
             </p>
             
-            <a href="${process.env.NEXT_PUBLIC_API_URL}/vendor/wallet" style="${button}">View Wallet</a>
+            <a href="${process.env.NEXT_PUBLIC_API_URL}
+            vendor/wallet" style="${button}">View Wallet</a>
             
             <p style="font-size: 15px; color: #6B7280; margin-top: 20px;">
               Thank you for selling with Spriie!
