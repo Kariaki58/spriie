@@ -4,7 +4,9 @@ import {
     Heart, Bookmark, Share2, 
     Play, Pause, 
     ChevronUp,
-    ChevronDown
+    ChevronDown,
+    UserPlus,
+    UserCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -63,6 +65,7 @@ export default function ProductScreen({ product, isActive }: any) {
     const [scrollLeft, setScrollLeft] = useState(0);
     const [showFullDescription, setShowFullDescription] = useState(false);
     const [qty, setQty] = useState(1);
+    const [isFollowing, setIsFollowing] = useState(false);
     const [showHeart, setShowHeart] = useState(false);
     const [lastTap, setLastTap] = useState(0);
     const mediaContainerRef = useRef<HTMLDivElement>(null);
@@ -74,6 +77,12 @@ export default function ProductScreen({ product, isActive }: any) {
         { type: 'video', url: product.video },
         ...product.images.map((img: string) => ({ type: 'image', url: img }))
     ];
+
+    const toggleFollow = () => {
+        setIsFollowing(!isFollowing);
+        console.log(isFollowing ? "Unfollowed user" : "Followed user");
+        console.log("User ID:", product.userId._id);
+    };
 
     // const togglePlayPause = () => {
     //     if (videoRef.current) {
@@ -395,6 +404,18 @@ export default function ProductScreen({ product, isActive }: any) {
                     </div>
                     <span className="text-white text-xs mt-1">@{product.userId._id.slice(-4)}</span>
                 </div>
+                {/* Follow button */}
+                <button 
+                    onClick={toggleFollow}
+                    className="flex flex-col items-center"
+                    aria-label={isFollowing ? "Unfollow user" : "Follow user"}
+                >
+                    {isFollowing ? (
+                        <UserCheck size={24} color="green" fill="green" />
+                    ) : (
+                        <UserPlus size={24} color="white" />
+                    )}
+                </button>
                 <LikeButton
                     productId={product._id}
                     initialLikes={product.likes}

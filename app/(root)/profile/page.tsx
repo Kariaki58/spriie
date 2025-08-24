@@ -90,7 +90,9 @@ export default function ProfilePage() {
     const base = 70;
     const uploadBonus = Math.min(mockContent.length * 2, 20);
     const followerBonus = Math.min(10, 10);
-    return Math.min(base + uploadBonus + followerBonus, 95);
+    const valuation = Math.min(base + uploadBonus + followerBonus, 95)
+
+    return valuation;
   };
 
   const isLoading = status === "loading";
