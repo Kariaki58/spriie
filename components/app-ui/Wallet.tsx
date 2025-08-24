@@ -564,7 +564,7 @@ export default function WalletDisplay() {
 
       {/* Withdraw Tab */}
       {activeTab === 'withdraw' && (
-        <Card>
+        <Card className='bg-gray-900'>
           <CardHeader>
             <CardTitle>Withdraw Funds</CardTitle>
           </CardHeader>
@@ -639,7 +639,7 @@ export default function WalletDisplay() {
 
       {/* Deposit Tab */}
       {activeTab === 'deposit' && (
-        <Card>
+        <Card className='bg-gray-900'>
           <CardHeader>
             <CardTitle>Deposit Funds</CardTitle>
           </CardHeader>

@@ -10,18 +10,16 @@ export default function OrderConfirmationPage() {
   const params = useParams()
   const searchParams = useSearchParams()
 
-  // Get orderId from path parameter
   const orderId = params?.id as string
-  // Get confirmToken from query parameter
-  const confirmToken = searchParams.get('comfirmToken')
-  
+  const confirmToken = searchParams.get('comfirmToken') // check spelling if intentional
+
   const [isConfirming, setIsConfirming] = useState(false)
-  const [isReporting, setIsReporting] = useState(false)
+  const [showReportForm, setShowReportForm] = useState(false)
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const [problemDescription, setProblemDescription] = useState('')
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Verify token on page load
   useEffect(() => {
     const verifyToken = async () => {
       if (!orderId || !confirmToken) {
@@ -34,14 +32,11 @@ export default function OrderConfirmationPage() {
         setIsLoading(true)
         const response = await fetch(`/api/orders/${orderId}/verify-token`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ confirmToken }),
         })
 
         if (!response.ok) throw new Error('Token verification failed')
-        
         const data = await response.json()
         setIsValidToken(data.isValid)
       } catch (error) {
@@ -66,9 +61,7 @@ export default function OrderConfirmationPage() {
       setIsConfirming(true)
       const response = await fetch(`/api/orders/${orderId}/confirm`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirmToken }),
       })
 
@@ -84,29 +77,23 @@ export default function OrderConfirmationPage() {
     }
   }
 
-
   const handleReportProblem = async () => {
     if (!orderId || !confirmToken || !isValidToken) {
       toast.error('Invalid confirmation link')
       return
     }
 
-    try {
-      if (!problemDescription.trim()) {
-        toast.warning('Please describe the problem')
-        return
-      }
+    if (!problemDescription.trim()) {
+      toast.warning('Please describe the problem')
+      return
+    }
 
-      setIsReporting(true)
+    try {
+      setIsSubmittingReport(true)
       const response = await fetch(`/api/orders/${orderId}/report`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          confirmToken,
-          problem: problemDescription 
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmToken, problem: problemDescription }),
       })
 
       if (!response.ok) throw new Error('Report submission failed')
@@ -117,7 +104,7 @@ export default function OrderConfirmationPage() {
       console.error('Report error:', error)
       toast.error('Failed to submit report. Please try again.')
     } finally {
-      setIsReporting(false)
+      setIsSubmittingReport(false)
     }
   }
 
@@ -149,7 +136,7 @@ export default function OrderConfirmationPage() {
           <div className="mt-5">
             <Link
               href="/user/orders"
-              className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+              className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500"
             >
               Go to Orders
             </Link>
@@ -167,9 +154,7 @@ export default function OrderConfirmationPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">
             Order Confirmation
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Order #{orderId}
-          </p>
+          <p className="text-gray-600 dark:text-gray-400">Order #{orderId}</p>
         </div>
 
         {/* Main Card */}
@@ -184,9 +169,7 @@ export default function OrderConfirmationPage() {
               </div>
               <div>
                 <h2 className="font-semibold text-gray-800 dark:text-gray-200">Delivered</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Your order has been delivered successfully
-                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Your order has been delivered successfully</p>
               </div>
             </div>
             <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-sm rounded-full">
@@ -196,19 +179,16 @@ export default function OrderConfirmationPage() {
 
           {/* Confirmation Section */}
           <div className="mb-8">
-            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4">
-              Confirm your delivery
-            </h3>
+            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4">Confirm your delivery</h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Please confirm that you've received your order in good condition. 
-              This will release the payment to the seller.
+              Please confirm that you've received your order in good condition. This will release the payment to the seller.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleConfirmDelivery}
-                disabled={isConfirming || isReporting}
-                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={isConfirming || isSubmittingReport}
+                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition disabled:opacity-70"
               >
                 {isConfirming ? (
                   <span className="flex items-center justify-center">
@@ -224,33 +204,31 @@ export default function OrderConfirmationPage() {
               </button>
               
               <button
-                onClick={() => setIsReporting(true)}
-                disabled={isReporting || isConfirming}
-                className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed"
+                onClick={() => setShowReportForm(true)}
+                disabled={isSubmittingReport || isConfirming}
+                className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium rounded-lg transition disabled:opacity-70"
               >
                 Report a Problem
               </button>
             </div>
           </div>
 
-          {/* Problem Report Form (Conditional) */}
-          {isReporting && (
+          {/* Problem Report Form */}
+          {showReportForm && (
             <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
-              <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4">
-                Describe the problem
-              </h3>
+              <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4">Describe the problem</h3>
               
               <textarea
                 value={problemDescription}
                 onChange={(e) => setProblemDescription(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition"
                 rows={4}
                 placeholder="Please describe any issues with your order..."
               />
               
               <div className="flex justify-end gap-3 mt-4">
                 <button
-                  onClick={() => setIsReporting(false)}
+                  onClick={() => setShowReportForm(false)}
                   className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
                 >
                   Cancel
@@ -258,10 +236,10 @@ export default function OrderConfirmationPage() {
                 
                 <button
                   onClick={handleReportProblem}
-                  disabled={!problemDescription.trim() || isConfirming}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={!problemDescription.trim() || isSubmittingReport}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition disabled:opacity-70"
                 >
-                  {isReporting ? 'Submitting...' : 'Submit Report'}
+                  {isSubmittingReport ? 'Submitting...' : 'Submit Report'}
                 </button>
               </div>
             </div>
@@ -269,12 +247,8 @@ export default function OrderConfirmationPage() {
 
           {/* Help Section */}
           <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
-              Need help?
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              If you have any questions about your order, our support team is here to help.
-            </p>
+            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">Need help?</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">If you have any questions about your order, our support team is here to help.</p>
             <Link 
               href="/support" 
               className="inline-flex items-center text-emerald-600 dark:text-emerald-400 hover:underline"

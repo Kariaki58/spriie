@@ -5,6 +5,10 @@ import Escrow from "@/models/EscrowTransaction";
 import User from "@/models/user";
 import { adminOrderProblemReportEmail, sellerOrderProblemReportEmail } from "@/lib/email/email-templates";
 import { resend } from "@/lib/email/resend";
+import { getServerSession } from "next-auth";
+import { options } from "@/app/api/auth/options";
+import Store from "@/models/store";
+import EmailJob from "@/models/emailJob";
 
 
 export async function POST(
@@ -12,13 +16,21 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const { id: orderId } = await params;
-  
+
+  const session = await getServerSession(options);
+
+  if (!session) {
+    return NextResponse.json(
+      { error: "Authentication Required" },
+      { status: 400 }
+    );
+  }
+
   try {
     await connectToDatabase();
-    
+
     const { confirmToken, problem } = await req.json();
 
-    // 1. Validate the request
     if (!confirmToken || !problem?.trim()) {
       return NextResponse.json(
         { error: "Confirmation token and problem description are required" },
@@ -26,11 +38,7 @@ export async function POST(
       );
     }
 
-    // 2. Verify the order and escrow
-    const order = await Order.findById(orderId)
-      .populate('buyerId')
-      .populate('sellerId')
-      .populate('items.product');
+    const order = await Order.findById(orderId).populate("userId");
 
     if (!order) {
       return NextResponse.json(
@@ -38,6 +46,17 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    if (order.userId._id.toString() !== session?.user.id) {
+      return NextResponse.json(
+        { error: "We could not find your Order" },
+        { status: 404 }
+      );
+    }
+
+    const userIdWithStore = await Store.findOne({ _id: order.storeId }).populate(
+      "userId"
+    );
 
     const escrow = await Escrow.findOne({ orderId });
 
@@ -48,50 +67,62 @@ export async function POST(
       );
     }
 
-    // 3. Update order status and add problem report
+    // update order with problem report
     order.status = "problem_reported";
     order.problemReports = order.problemReports || [];
     order.problemReports.push({
       reportedAt: new Date(),
       description: problem,
-      status: "pending_review"
+      status: "pending_review",
     });
 
     await order.save();
 
-    // 4. Send notifications (non-blocking)
-    try {
-      // Get admin users
-    //   const admins = await User.find({ role: "admin" }).select("email");
-    //   const adminEmails = admins.map(admin => admin.email);
+    // prepare email payloads
+    const adminPayload = adminOrderProblemReportEmail(
+      orderId,
+      order.userId.name,
+      problem
+    );
+    const sellerPayload = sellerOrderProblemReportEmail(
+      orderId,
+      userIdWithStore.userId.name,
+      order.userId.name,
+      problem
+    );
 
-    //   await resend.emails.send({
-    //     from: 'Spriie <contact@spriie.com>',
-    //     to: "",
-    //     ...adminOrderProblemReportEmail(orderId, order.buyerId.name, problem)
-    //   })
+    // try sending admin email
+    const { error: adminError } = await resend.emails.send({
+      from: "Spriie <contact@spriie.com>",
+      to: process.env.ADMIN_EMAIL!,
+      ...adminPayload,
+    });
 
-      await resend.emails.send({
-        from: 'Spriie <contact@spriie.com>',
-        to: order.sellerId.email,
-        ...sellerOrderProblemReportEmail(
-          orderId,
-          order.sellerId.name,
-          order.buyerId.name,
-          problem
-        )
-      })
+    if (adminError) {
+      await EmailJob.create({
+        to: process.env.ADMIN_EMAIL!,
+        ...adminPayload,
+      });
+    }
 
-    } catch (emailError) {
-      console.error("Failed to send problem report emails:", emailError);
-      // Continue even if emails fail
+    // try sending seller email
+    const { error: sellerError } = await resend.emails.send({
+      from: "Spriie <contact@spriie.com>",
+      to: userIdWithStore.userId.email,
+      ...sellerPayload,
+    });
+
+    if (sellerError) {
+      await EmailJob.create({
+        to: userIdWithStore.userId.email,
+        ...sellerPayload,
+      });
     }
 
     return NextResponse.json(
       { success: true, message: "Problem reported successfully" },
       { status: 200 }
     );
-
   } catch (error: any) {
     console.error("Problem report error:", error);
     return NextResponse.json(
