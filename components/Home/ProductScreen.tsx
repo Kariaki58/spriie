@@ -420,7 +420,6 @@ export default function ProductScreen({ product, isActive }: any) {
                     productId={product._id}
                     initialLikes={product.likes}
                     initiallyLiked={initiallyLiked}
-                    className="like-button"
                 />
 
 
