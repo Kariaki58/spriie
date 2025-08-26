@@ -14,7 +14,6 @@ import BuyDrawer from './buy-drawer';
 import CommentsDrawer from './comment-drawer';
 import LikeButton from './LikeButton';
 
-
 export interface Product {
     _id: string;
     name: string;
@@ -26,7 +25,10 @@ export interface Product {
     thumbnail: string;
     like: number;
     likedBy: string[];
-    userId: string;
+    userId: {
+        _id: string;
+        avatar: string;
+    };
 }
 
 export interface BuyDrawerProps {
@@ -36,7 +38,6 @@ export interface BuyDrawerProps {
     setQty: (qty: number) => void;
     qty: number;
 }
-
 
 function HeartAnimation({ onAnimationEnd }: { onAnimationEnd: () => void }) {
     return (
@@ -50,7 +51,6 @@ function HeartAnimation({ onAnimationEnd }: { onAnimationEnd: () => void }) {
         </div>
     );
 }
-
 
 export default function ProductScreen({ product, isActive }: any) {
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -67,7 +67,6 @@ export default function ProductScreen({ product, isActive }: any) {
     const [qty, setQty] = useState(1);
     const [isFollowing, setIsFollowing] = useState(false);
     const [showHeart, setShowHeart] = useState(false);
-    const [lastTap, setLastTap] = useState(0);
     const mediaContainerRef = useRef<HTMLDivElement>(null);
     const lastTapRef = useRef(0);
 
@@ -78,24 +77,56 @@ export default function ProductScreen({ product, isActive }: any) {
         ...product.images.map((img: string) => ({ type: 'image', url: img }))
     ];
 
-    const toggleFollow = () => {
-        setIsFollowing(!isFollowing);
-        console.log(isFollowing ? "Unfollowed user" : "Followed user");
-        console.log("User ID:", product.userId._id);
-    };
+    // Check follow status on component mount
+    useEffect(() => {
+        const checkFollowStatus = async () => {
+            if (session?.user?.id && product.userId._id) {
+                try {
+                    const res = await fetch(`/api/follow?followerId=${session.user.id}&followingId=${product.userId._id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setIsFollowing(data.isFollowing);
+                    }
+                } catch (err) {
+                    console.error("Error checking follow status:", err);
+                }
+            }
+        };
 
-    // const togglePlayPause = () => {
-    //     if (videoRef.current) {
-    //         if (videoRef.current.paused) {
-    //             videoRef.current.play()
-    //             .then(() => setIsPlaying(true))
-    //             .catch(e => console.log("Play failed:", e));
-    //         } else {
-    //             videoRef.current.pause();
-    //             setIsPlaying(false);
-    //         }
-    //     }
-    // };
+        checkFollowStatus();
+    }, [session?.user?.id, product.userId._id]);
+
+    const toggleFollow = async () => {
+        // Optimistically update the UI first
+        const previousState = isFollowing;
+        setIsFollowing(!previousState);
+        
+        try {
+            const res = await fetch("/api/follow", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    followerId: session?.user.id,
+                    followingId: product.userId._id,
+                }),
+            });
+
+            if (!res.ok) {
+                // If the API call fails, revert the UI change
+                throw new Error("API call failed");
+            }
+
+            const data = await res.json();
+            console.log(data.message);
+            
+            // Ensure UI matches the server state (in case of race conditions)
+            setIsFollowing(data.isFollowing);
+        } catch (err) {
+            // Revert to previous state on error
+            setIsFollowing(previousState);
+            console.error("Error following/unfollowing:", err);
+        }
+    };
 
     const togglePlayPause = () => {
         const video = videoRef.current;
@@ -104,20 +135,17 @@ export default function ProductScreen({ product, isActive }: any) {
         if (video.paused || video.ended) {
             const playPromise = video.play();
             if (playPromise !== undefined) {
-            playPromise
-                .then(() => setIsPlaying(true))
-                .catch((err) => {
-                console.log("Play failed:", err);
-                });
+                playPromise
+                    .then(() => setIsPlaying(true))
+                    .catch((err) => {
+                        console.log("Play failed:", err);
+                    });
             }
         } else {
             video.pause();
             setIsPlaying(false);
         }
-        };
-
-
-
+    };
 
     useEffect(() => {
         const video = videoRef.current;
@@ -127,19 +155,18 @@ export default function ProductScreen({ product, isActive }: any) {
             video.muted = true;
             const playPromise = video.play();
             if (playPromise !== undefined) {
-            playPromise
-                .then(() => setIsPlaying(true))
-                .catch((err) => {
-                console.log("Autoplay blocked on mobile:", err);
-                setIsPlaying(false);
-                });
+                playPromise
+                    .then(() => setIsPlaying(true))
+                    .catch((err) => {
+                        console.log("Autoplay blocked on mobile:", err);
+                        setIsPlaying(false);
+                    });
             }
         } else {
             video.pause();
             setIsPlaying(false);
         }
     }, [isActive, currentMediaIndex]);
-
 
     const handleScroll = () => {
         if (scrollContainerRef.current) {
@@ -152,13 +179,11 @@ export default function ProductScreen({ product, isActive }: any) {
     };
 
     const handleLike = () => {
-        // Find the like button in the DOM and click it
         const likeButton = document.querySelector('.like-button') as HTMLElement;
         if (likeButton) {
             likeButton.click();
         }
     };
-
 
     const handleAnimationEnd = () => {
         setShowHeart(false);
@@ -173,14 +198,12 @@ export default function ProductScreen({ product, isActive }: any) {
         const tapLength = currentTime - lastTapRef.current;
         
         if (tapLength < 300 && tapLength > 0) {
-            // Double tap detected
             e.preventDefault();
             handleLike();
             showHeartAnimation();
         }
         lastTapRef.current = currentTime;
     };
-
 
     const handleDoubleTap = (e: React.TouchEvent | React.MouseEvent) => {
         e.preventDefault();
@@ -192,7 +215,7 @@ export default function ProductScreen({ product, isActive }: any) {
         if (tapLength < 300 && tapLength > 0) {
             handleLike();
             showHeartAnimation();
-            lastTapRef.current = 0; // Reset after successful double-tap
+            lastTapRef.current = 0;
         } else {
             lastTapRef.current = currentTime;
         }
@@ -257,14 +280,13 @@ export default function ProductScreen({ product, isActive }: any) {
         return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
-
     const toggleDescription = () => {
         setShowFullDescription(!showFullDescription);
     };
 
     const initiallyLiked = session?.user?.id
-    ? product.likedBy.map((id: string) => id).includes(session.user.id)
-    : false;
+        ? product.likedBy.map((id: string) => id).includes(session.user.id)
+        : false;
     
     return (
         <div className="h-[100vh] w-full max-w-md mx-auto bg-black relative overflow-hidden snap-start">
@@ -283,8 +305,6 @@ export default function ProductScreen({ product, isActive }: any) {
                         className="flex-shrink-0 w-full h-full snap-center relative group"
                         onMouseEnter={() => media.type === 'video' && setShowPlayButton(true)}
                         onMouseLeave={() => media.type === 'video' && setShowPlayButton(false)}
-                        // onTouchStart={() => media.type === 'video' && setShowPlayButton(true)}
-                        // onDoubleClick={handleDoubleTap}
                         onTouchEnd={handleDoubleTap}
                     >
                         {media.type === 'video' ? (
@@ -304,7 +324,6 @@ export default function ProductScreen({ product, isActive }: any) {
                                         togglePlayPause();
                                     }}
                                 />
-
 
                                 <button
                                     onClick={(e) => {
@@ -356,7 +375,6 @@ export default function ProductScreen({ product, isActive }: any) {
                         <span className="ml-2 text-sm line-through text-gray-300">
                             ₦{formatNumberWithCommas(Number((product.basePrice / (1 - product.discount / 100)).toFixed(0)))}
                         </span>
-
                         )}
                     </div>
                     <h3 className="font-bold text-lg truncate">{product.name}</h3>
@@ -383,20 +401,14 @@ export default function ProductScreen({ product, isActive }: any) {
                     </div>
                 </div>
             </div>
-            <button>
-                view more
-            </button>
 
             <div className="absolute right-4 bottom-24 flex flex-col items-center space-y-4 z-10">
                 <div className="flex flex-col items-center">
                     <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
                         <Link href={session?.user?.id === product.userId._id ? '/profile' : `/profile/${product.userId._id}`}>
-
                             <img 
                                 src={product.userId.avatar || "/default.jpg"} 
                                 alt="User profile"
-                                // width={100}
-                                // height={100}
                                 className="w-full h-full rounded-full object-cover"
                                 loading="lazy"
                             />
@@ -404,7 +416,8 @@ export default function ProductScreen({ product, isActive }: any) {
                     </div>
                     <span className="text-white text-xs mt-1">@{product.userId._id.slice(-4)}</span>
                 </div>
-                {/* Follow button */}
+                
+                {/* Follow button with persistent state */}
                 <button 
                     onClick={toggleFollow}
                     className="flex flex-col items-center"
@@ -416,12 +429,12 @@ export default function ProductScreen({ product, isActive }: any) {
                         <UserPlus size={24} color="white" />
                     )}
                 </button>
+                
                 <LikeButton
                     productId={product._id}
                     initialLikes={product.likes}
                     initiallyLiked={initiallyLiked}
                 />
-
 
                 <CommentsDrawer productId={product._id} commentCount={50}/>
 
