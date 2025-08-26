@@ -84,7 +84,7 @@ export default function ExplorePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500 mb-4"></div>
           <p className="text-gray-400">Discovering amazing products...</p>
@@ -95,7 +95,7 @@ export default function ExplorePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center p-8 bg-gray-700 backdrop-blur-lg rounded-2xl border border-gray-700/30">
           <p className="text-red-400 mb-4 text-lg">Error: {error}</p>
           <button 
