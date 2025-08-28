@@ -12,7 +12,7 @@ export interface IStore extends Document {
     phone: string;
     email: string;
     openingHours: Object;
-    colors: {  // Add this
+    colors: {
         primary: string;
         secondary: string;
         accent: string;

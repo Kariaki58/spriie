@@ -1,3 +1,5 @@
+import StoreDisplay from "@/components/store/storeDisplay";
+
 export default async function StorePage({ params }: { params: { storename: string } }) {
 
     const { storename } = await params
@@ -5,8 +7,6 @@ export default async function StorePage({ params }: { params: { storename: strin
     let store = {};
 
     try {
-        console.log("line")
-        console.log(`${process.env.NEXT_PUBLIC_API_URL}/api/store/${storename}`)
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/store/${storename}`, {
             method: 'GET'
         })
@@ -19,7 +19,7 @@ export default async function StorePage({ params }: { params: { storename: strin
     }
   return (
     <div>
-
+      <StoreDisplay store={store}/>
     </div>
   )
 }
